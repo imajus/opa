@@ -6,10 +6,12 @@ async function wrapToken(token) {
   return {
     contract: token,
     getAddress: () => token.getAddress(),
+    balance: (account) => token.balanceOf(account),
     mint: (account, value) => token.mint(account, units(value, decimals)),
     approve: (owner, spender, value) =>
       token.connect(owner).approve(spender, units(value, decimals)),
     parseAmount: (value) => units(value, decimals),
+    formatAmount: (value) => ethers.formatUnits(value, decimals),
   };
 }
 
@@ -17,11 +19,13 @@ async function wrapWrapperToken(token) {
   return {
     contract: token,
     getAddress: () => token.getAddress(),
+    balance: (account) => token.balanceOf(account),
     mint: (account, value) =>
       token.connect(account).deposit({ value: ether(value) }),
     approve: (owner, spender, value) =>
       token.connect(owner).approve(spender, ether(value)),
     parseAmount: (value) => ether(value),
+    formatAmount: (value) => ethers.formatEther(value),
   };
 }
 

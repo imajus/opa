@@ -550,9 +550,7 @@ describe('RangeAmountCalculator Integration Tests', function () {
       }
 
       // Verify the order is nearly completely filled (small rounding expected)
-      expect(remainingMakingAmount).to.be.lt(
-        setup.makerAsset.parseAmount('0.001')
-      );
+      expect(remainingMakingAmount).to.be.lt(setup.makerAsset.amount('0.001'));
     });
   });
 
