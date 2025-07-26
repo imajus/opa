@@ -1,0 +1,101 @@
+---
+globs: test/extensions/*.test.js
+description: Coding style and helper patterns for calculator extension tests; orig-test folder can be used as reference
+alwaysApply: false
+---
+
+# JavaScript Test Style Guide
+
+This rule applies to all JavaScript files inside the `test/extensions` folder. Follow these conventions when writing or updating tests. Adhering to these guidelines ensures consistency and readability across all test suites.
+
+## 1. Language & Framework
+
+- Write tests in **JavaScript** ( `.js` ) – TypeScript is not used for test files.
+- Use Mocha for structure (`describe`, `it`) and Chai from `@1inch/solidity-utils` for assertions.
+- Prefer the helper utilities bundled in this repo (see links below).
+
+## 2. Imports
+
+```js
+const { ethers } = require('hardhat');
+const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
+const { expect, assertRoughlyEqualValues } = require('@1inch/solidity-utils');
+```
+
+- Import order: `hardhat` → Hardhat helpers → Chai utils → local helpers.
+- Local helpers live under [`test/extensions/helpers`](mdc:test/extensions/helpers) and are required next.
+
+## 3. Fixtures & Deployment
+
+- **Always** wrap deployments in a fixture created with `loadFixture` to keep tests deterministic and fast.
+- Name the fixture `deployContractsAndInit` (or similar) and return structured objects: `{ taker, maker, tokens, contracts, oracles }`.
+- Use wrapper helpers from [`fixtures.js`](mdc:test/extensions/helpers/fixtures.js) to mint/approve tokens.
+
+## 4. Helper Patterns
+
+- Re-use functions from [`order.js`](mdc:test/extensions/helpers/order.js) for building orders, maker/taker traits, and signing.
+- For repetitive logic, encapsulate in dedicated helpers inside each test file (e.g. `createChainlinkOrder`, `executeOrderFill`).
+- Helper names follow `camelCase` and start with a verb (`deployX`, `createX`, `executeX`).
+
+## 5. Assertions
+
+- Token balance checks use:
+
+```js
+await expect(tx).to.changeTokenBalances(
+  token.contract,
+  [addr1, addr2],
+  [delta1, delta2]
+);
+```
+
+- Approximate numerical comparisons rely on `assertRoughlyEqualValues` with an appropriate tolerance.
+- When expecting reverts, match the custom error _and_ the contract, e.g.
+
+```js
+await expect(fn()).to.be.revertedWithCustomError(
+  contract,
+  'PredicateIsNotTrue'
+);
+```
+
+## 6. Time Manipulation
+
+- Manipulate block time with `time.increase` from Hardhat network helpers; store the return of `await time.latest()` when needed.
+
+## 7. Style Rules
+
+- Do **not** add blank lines inside function bodies (compact style) – complies with the user’s global rule.
+- Keep helper functions grouped at the top of the file, test cases afterwards.
+- One `describe` block per tested contract/calculator; inner `describe` blocks for logical groups (e.g. "Single Price Oracle Tests").
+- Test names (`it(...)`) should start with a lowercase verb and clearly state the expected behaviour.
+
+## 8. Naming Conventions
+
+- Calculator specific helpers:
+  - `deploy<CalculatorName>()` – deploys calculator contract and waits for deployment.
+  - `create<CalculatorName>Order()` – builds & signs an order for the calculator.
+- Variables:
+  - Use `setup` object to store static test parameters (maker/taker asset, amounts, spreads, etc.).
+  - Use `parsed...` prefix for BigInt/wei converted amounts.
+
+## 9. Decimal Handling
+
+- Use `wrapToken` / `wrapWrapperToken` from [`fixtures.js`](mdc:test/extensions/helpers/fixtures.js) to obtain helpers with `.parseAmount`, `.formatAmount`, etc.
+- Always convert human-readable strings to `BigInt` using these helpers before interacting with contracts.
+
+## 10. Gas & Tracing (advanced)
+
+- When measuring gas, leverage utilities in [`utils.js`](mdc:test/extensions/helpers/utils.js) such as `calculateGasUsed` and `withTrace`.
+- Enable tracing only inside targeted tests and restore verbosity afterwards.
+
+## 11. Reference Tests (`orig-test/`)
+
+The [`orig-test/`](mdc:orig-tests) directory contains unmodified test files ported from the upstream 1inch Limit Order Protocol repository.
+These files are **not** executed by the default Hardhat test task and remain outside of the `test/` glob patterns.
+Use them purely as a reference when implementing or refactoring tests under `test/`; you may copy snippets or logic, but keep the original files untouched for historical comparison.
+
+No style rules are enforced for files inside `orig-test/`.
+
+- When measuring gas, leverage utilities in [`utils.js`](mdc:test/extensions/helpers/utils.js) such as `calculateGasUsed` and `withTrace`.
+- Enable tracing only inside targeted tests and restore verbosity afterwards.
