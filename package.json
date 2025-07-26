@@ -1,0 +1,14 @@
+{
+  "name": "hardhat-project",
+  "scripts": {
+    "test": "hardhat test",
+    "deploy": "hardhat ignition deploy ignition/modules/Lock.js",
+    "compile": "hardhat compile",
+    "node": "hardhat node --network hardhat"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
+    "dotenv": "^17.2.1",
+    "hardhat": "^2.26.1"
+  }
+}
