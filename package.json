@@ -1,12 +1,20 @@
 {
   "name": "hardhat-project",
   "scripts": {
+    "start": "npx hardhat node",
     "test": "hardhat test",
     "deploy": "hardhat ignition deploy ignition/modules/Lock.js",
+    "deploy:extensions": "hardhat ignition deploy ignition/modules/AllExtensions.js",
     "compile": "hardhat compile",
-    "node": "hardhat node --network hardhat"
+    "node": "hardhat node"
+  },
+  "dependencies": {
+    "@1inch/limit-order-protocol-contract": "^4.3.2",
+    "@1inch/solidity-utils": "^6.6.0",
+    "@chainlink/contracts": "^0.8.0"
   },
   "devDependencies": {
+    "@metamask/eth-sig-util": "^8.2.0",
     "@nomicfoundation/hardhat-toolbox": "^6.1.0",
     "dotenv": "^17.2.1",
     "hardhat": "^2.26.1"
