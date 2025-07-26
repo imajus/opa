@@ -2,7 +2,7 @@
   "name": "hardhat-project",
   "scripts": {
     "start": "npx hardhat node",
-    "test": "hardhat test",
+    "test": "hardhat test --bail",
     "deploy": "hardhat ignition deploy ignition/modules/Lock.js",
     "deploy:extensions": "hardhat ignition deploy ignition/modules/AllExtensions.js",
     "compile": "hardhat compile",
