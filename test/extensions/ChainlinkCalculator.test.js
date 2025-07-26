@@ -6,8 +6,8 @@ const {
   buildOrder,
   signOrder,
   buildTakerTraits,
-} = require('./helpers/order');
-const { deploySwapTokens } = require('./helpers/fixtures');
+} = require('../helpers/order');
+const { deploySwapTokens } = require('../helpers/fixtures');
 
 function buildSinglePriceCalldata({
   chainlinkCalcAddress,
@@ -90,8 +90,8 @@ async function createChainlinkOrder({
   const chainlinkCalcAddress = await chainlinkCalculator.getAddress();
   const order = buildOrder(
     {
-      makerAsset: await makerAsset.getAddress(),
-      takerAsset: await takerAsset.getAddress(),
+      makerAsset: makerAsset.address,
+      takerAsset: takerAsset.address,
       makingAmount: parsedMakingAmount,
       takingAmount: parsedTakingAmount,
       maker: maker.address,
@@ -144,8 +144,8 @@ async function createDoublePriceOrder({
   const chainlinkCalcAddress = await chainlinkCalculator.getAddress();
   const order = buildOrder(
     {
-      makerAsset: await makerAsset.getAddress(),
-      takerAsset: await takerAsset.getAddress(),
+      makerAsset: makerAsset.address,
+      takerAsset: takerAsset.address,
       makingAmount: parsedMakingAmount,
       takingAmount: parsedTakingAmount,
       maker: maker.address,
@@ -603,8 +603,8 @@ describe('ChainlinkCalculator Integration Tests', function () {
       );
       const order = buildOrder(
         {
-          makerAsset: await setup.makerAsset.getAddress(),
-          takerAsset: await setup.takerAsset.getAddress(),
+          makerAsset: setup.makerAsset.address,
+          takerAsset: setup.takerAsset.address,
           makingAmount: setup.makerAsset.parseAmount(setup.makingAmount),
           takingAmount: setup.takerAsset.parseAmount(setup.takingAmount),
           maker: maker.address,
@@ -682,8 +682,8 @@ describe('ChainlinkCalculator Integration Tests', function () {
         );
       const order = buildOrder(
         {
-          makerAsset: await setup.makerAsset.getAddress(),
-          takerAsset: await setup.takerAsset.getAddress(),
+          makerAsset: setup.makerAsset.address,
+          takerAsset: setup.takerAsset.address,
           makingAmount: setup.makerAsset.parseAmount(setup.makingAmount),
           takingAmount: setup.takerAsset.parseAmount(setup.takingAmount),
           maker: maker.address,

@@ -6,8 +6,8 @@ const {
   buildOrder,
   signOrder,
   buildTakerTraits,
-} = require('./helpers/order');
-const { deploySwapTokens } = require('./helpers/fixtures');
+} = require('../helpers/order');
+const { deploySwapTokens } = require('../helpers/fixtures');
 
 async function deployRangeAmountCalculator() {
   const RangeAmountCalculator = await ethers.getContractFactory(
@@ -45,8 +45,8 @@ async function createRangeOrder({
 
   const order = buildOrder(
     {
-      makerAsset: await makerAsset.getAddress(),
-      takerAsset: await takerAsset.getAddress(),
+      makerAsset: makerAsset.address,
+      takerAsset: takerAsset.address,
       makingAmount: parsedMakingAmount,
       takingAmount: parsedTakingAmount,
       maker: maker.address,

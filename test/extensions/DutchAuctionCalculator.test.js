@@ -9,8 +9,8 @@ const {
   buildOrder,
   signOrder,
   buildTakerTraits,
-} = require('./helpers/order');
-const { deploySwapTokens } = require('./helpers/fixtures');
+} = require('../helpers/order');
+const { deploySwapTokens } = require('../helpers/fixtures');
 
 async function deployDutchAuctionCalculator() {
   const DutchAuctionCalculator = await ethers.getContractFactory(
@@ -54,8 +54,8 @@ async function createDutchAuctionOrder({
 
   const order = buildOrder(
     {
-      makerAsset: await makerAsset.getAddress(),
-      takerAsset: await takerAsset.getAddress(),
+      makerAsset: makerAsset.address,
+      takerAsset: takerAsset.address,
       makingAmount: parsedMakingAmount,
       takingAmount: parsedTakingAmount,
       maker: maker.address,

@@ -1,12 +1,12 @@
 ---
-globs: test/extensions/*.test.js
-description: Coding style and helper patterns for calculator extension tests; orig-test folder can be used as reference
+globs: test/*.test.js
+description: Coding style and helper patterns for smart contract tests
 alwaysApply: false
 ---
 
 # JavaScript Test Style Guide
 
-This rule applies to all JavaScript files inside the `test/extensions` folder. Follow these conventions when writing or updating tests. Adhering to these guidelines ensures consistency and readability across all test suites.
+This rule applies JavaScript files inside the `test` folder covering Solidity smart contracts. Follow these conventions when writing or updating tests.
 
 ## 1. Language & Framework
 
@@ -23,17 +23,17 @@ const { expect, assertRoughlyEqualValues } = require('@1inch/solidity-utils');
 ```
 
 - Import order: `hardhat` → Hardhat helpers → Chai utils → local helpers.
-- Local helpers live under [`test/extensions/helpers`](mdc:test/extensions/helpers) and are required next.
+- Local helpers live under [`test/helpers`](mdc:test/helpers) and are required next.
 
 ## 3. Fixtures & Deployment
 
 - **Always** wrap deployments in a fixture created with `loadFixture` to keep tests deterministic and fast.
 - Name the fixture `deployContractsAndInit` (or similar) and return structured objects: `{ taker, maker, tokens, contracts, oracles }`.
-- Use wrapper helpers from [`fixtures.js`](mdc:test/extensions/helpers/fixtures.js) to mint/approve tokens.
+- Use wrapper helpers from [`fixtures.js`](mdc:test/helpers/fixtures.js) to mint/approve tokens.
 
 ## 4. Helper Patterns
 
-- Re-use functions from [`order.js`](mdc:test/extensions/helpers/order.js) for building orders, maker/taker traits, and signing.
+- Re-use functions from [`order.js`](mdc:test/helpers/order.js) for building orders, maker/taker traits, and signing.
 - For repetitive logic, encapsulate in dedicated helpers inside each test file (e.g. `createChainlinkOrder`, `executeOrderFill`).
 - Helper names follow `camelCase` and start with a verb (`deployX`, `createX`, `executeX`).
 
@@ -81,12 +81,12 @@ await expect(fn()).to.be.revertedWithCustomError(
 
 ## 9. Decimal Handling
 
-- Use `wrapToken` / `wrapWrapperToken` from [`fixtures.js`](mdc:test/extensions/helpers/fixtures.js) to obtain helpers with `.parseAmount`, `.formatAmount`, etc.
+- Use `wrapToken` / `wrapWrapperToken` from [`fixtures.js`](mdc:test/helpers/fixtures.js) to obtain helpers with `.parseAmount`, `.formatAmount`, etc.
 - Always convert human-readable strings to `BigInt` using these helpers before interacting with contracts.
 
 ## 10. Gas & Tracing (advanced)
 
-- When measuring gas, leverage utilities in [`utils.js`](mdc:test/extensions/helpers/utils.js) such as `calculateGasUsed` and `withTrace`.
+- When measuring gas, leverage utilities in [`utils.js`](mdc:test/helpers/utils.js) such as `calculateGasUsed` and `withTrace`.
 - Enable tracing only inside targeted tests and restore verbosity afterwards.
 
 ## 11. Reference Tests (`orig-test/`)
@@ -97,5 +97,5 @@ Use them purely as a reference when implementing or refactoring tests under `tes
 
 No style rules are enforced for files inside `orig-test/`.
 
-- When measuring gas, leverage utilities in [`utils.js`](mdc:test/extensions/helpers/utils.js) such as `calculateGasUsed` and `withTrace`.
+- When measuring gas, leverage utilities in [`utils.js`](mdc:test/helpers/utils.js) such as `calculateGasUsed` and `withTrace`.
 - Enable tracing only inside targeted tests and restore verbosity afterwards.

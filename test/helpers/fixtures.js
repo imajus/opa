@@ -2,10 +2,13 @@ const { ethers } = require('hardhat');
 const { ether, units } = require('./utils');
 
 async function wrapToken(token) {
+  const address = await token.getAddress();
   const decimals = await token.decimals();
   return {
+    address,
+    decimals,
     contract: token,
-    getAddress: () => token.getAddress(),
+    // getAddress: () => token.getAddress(),
     balance: (account) => token.balanceOf(account),
     mint: (account, value) => token.mint(account, units(value, decimals)),
     approve: (owner, spender, value) =>
@@ -16,9 +19,13 @@ async function wrapToken(token) {
 }
 
 async function wrapWrapperToken(token) {
+  const address = await token.getAddress();
+  const decimals = await token.decimals();
   return {
+    address,
+    decimals,
     contract: token,
-    getAddress: () => token.getAddress(),
+    // getAddress: () => token.getAddress(),
     balance: (account) => token.balanceOf(account),
     mint: (account, value) =>
       token.connect(account).deposit({ value: ether(value) }),
@@ -30,6 +37,7 @@ async function wrapWrapperToken(token) {
 }
 
 async function deploySwapTokens() {
+  const [deployer] = await ethers.getSigners();
   const LimitOrderProtocol = await ethers.getContractFactory(
     'LimitOrderProtocol'
   );
@@ -37,9 +45,16 @@ async function deploySwapTokens() {
   const TokenCustomDecimalsMock = await ethers.getContractFactory(
     'TokenCustomDecimalsMock'
   );
+  const PermitMock = await ethers.getContractFactory('ERC20PermitMock');
   const WrappedTokenMock = await ethers.getContractFactory('WrappedTokenMock');
   // Deploy tokens
-  const dai = await TokenMock.deploy('DAI', 'DAI');
+  // const dai = await TokenMock.deploy('DAI', 'DAI');
+  const dai = await PermitMock.deploy(
+    'DAI',
+    'DAI',
+    deployer.address,
+    ether('1000')
+  );
   const inch = await TokenMock.deploy('1INCH', '1INCH');
   const usdc = await TokenCustomDecimalsMock.deploy('USDC', 'USDC', '0', 6);
   const usdt = await TokenCustomDecimalsMock.deploy('USDT', 'USDT', '0', 6);
