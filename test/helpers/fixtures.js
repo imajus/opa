@@ -1,73 +1,95 @@
-const { constants } = require('@1inch/solidity-utils');
 const { ethers } = require('hardhat');
+const { ether, units } = require('./utils');
 
-async function deploySwapTokens () {
-    const TokenMock = await ethers.getContractFactory('TokenMock');
-    const dai = await TokenMock.deploy('DAI', 'DAI');
-    await dai.waitForDeployment();
-    const WrappedTokenMock = await ethers.getContractFactory('WrappedTokenMock');
-    const weth = await WrappedTokenMock.deploy('WETH', 'WETH');
-    await weth.waitForDeployment();
-    const inch = await TokenMock.deploy('1INCH', '1INCH');
-    await inch.waitForDeployment();
-    const LimitOrderProtocol = await ethers.getContractFactory('LimitOrderProtocol');
-    const swap = await LimitOrderProtocol.deploy(weth);
-    await swap.waitForDeployment();
-    const TokenCustomDecimalsMock = await ethers.getContractFactory('TokenCustomDecimalsMock');
-    const usdc = await TokenCustomDecimalsMock.deploy('USDC', 'USDC', '0', 6);
-    await usdc.waitForDeployment();
-    const chainId = (await ethers.provider.getNetwork()).chainId;
-    return { dai, weth, inch, swap, chainId, usdc };
-};
+async function wrapToken(token) {
+  const decimals = await token.decimals();
+  return {
+    contract: token,
+    getAddress: () => token.getAddress(),
+    mint: (account, value) => token.mint(account, units(value, decimals)),
+    approve: (owner, spender, value) =>
+      token.connect(owner).approve(spender, units(value, decimals)),
+    parseAmount: (value) => units(value, decimals),
+  };
+}
 
-async function deploySwap () {
-    const LimitOrderProtocol = await ethers.getContractFactory('LimitOrderProtocol');
-    const swap = await LimitOrderProtocol.deploy(constants.ZERO_ADDRESS);
-    await swap.waitForDeployment();
-    return { swap };
-};
+async function wrapWrapperToken(token) {
+  return {
+    contract: token,
+    getAddress: () => token.getAddress(),
+    mint: (account, value) =>
+      token.connect(account).deposit({ value: ether(value) }),
+    approve: (owner, spender, value) =>
+      token.connect(owner).approve(spender, ether(value)),
+    parseAmount: (value) => ether(value),
+  };
+}
 
-async function deployUSDC () {
-    const TokenMock = await ethers.getContractFactory('TokenMock');
-    const usdc = await TokenMock.deploy('USDC', 'USDC');
-    await usdc.waitForDeployment();
-    return { usdc };
-};
+async function deploySwapTokens() {
+  const LimitOrderProtocol = await ethers.getContractFactory(
+    'LimitOrderProtocol'
+  );
+  const TokenMock = await ethers.getContractFactory('TokenMock');
+  const TokenCustomDecimalsMock = await ethers.getContractFactory(
+    'TokenCustomDecimalsMock'
+  );
+  const WrappedTokenMock = await ethers.getContractFactory('WrappedTokenMock');
+  // Deploy tokens
+  const dai = await TokenMock.deploy('DAI', 'DAI');
+  const inch = await TokenMock.deploy('1INCH', '1INCH');
+  const usdc = await TokenCustomDecimalsMock.deploy('USDC', 'USDC', '0', 6);
+  const usdt = await TokenCustomDecimalsMock.deploy('USDT', 'USDT', '0', 6);
+  const weth = await WrappedTokenMock.deploy('WETH', 'WETH');
+  // Wait for token deployments
+  await Promise.all([
+    dai.waitForDeployment(),
+    usdc.waitForDeployment(),
+    usdt.waitForDeployment(),
+    inch.waitForDeployment(),
+    weth.waitForDeployment(),
+  ]);
+  // LimitOrderProtocol
+  const swap = await LimitOrderProtocol.deploy(weth);
+  await swap.waitForDeployment();
+  return {
+    swap,
+    dai: await wrapToken(dai),
+    weth: await wrapWrapperToken(weth),
+    inch: await wrapToken(inch),
+    usdc: await wrapToken(usdc),
+    usdt: await wrapToken(usdt),
+  };
+}
 
-async function deployArbitraryPredicate () {
-    const ArbitraryPredicateMock = await ethers.getContractFactory('ArbitraryPredicateMock');
-    const arbitraryPredicate = await ArbitraryPredicateMock.deploy();
-    await arbitraryPredicate.waitForDeployment();
-    return { arbitraryPredicate };
-};
+// async function deploySwap() {
+//   const LimitOrderProtocol = await ethers.getContractFactory(
+//     'LimitOrderProtocol'
+//   );
+//   const swap = await LimitOrderProtocol.deploy(constants.ZERO_ADDRESS);
+//   await swap.waitForDeployment();
+//   return { swap };
+// }
 
-async function deployUSDT () {
-    const TokenMock = await ethers.getContractFactory('TokenMock');
-    const usdt = await TokenMock.deploy('USDT', 'USDT');
-    await usdt.waitForDeployment();
-    return { usdt };
-};
+async function deployArbitraryPredicate() {
+  const ArbitraryPredicateMock = await ethers.getContractFactory(
+    'ArbitraryPredicateMock'
+  );
+  const arbitraryPredicate = await ArbitraryPredicateMock.deploy();
+  await arbitraryPredicate.waitForDeployment();
+  return { arbitraryPredicate };
+}
 
-async function deploySeriesEpochManager () {
-    const SeriesEpochManager = await ethers.getContractFactory('SeriesEpochManager');
-    const seriesEpochManager = await SeriesEpochManager.deploy();
-    await seriesEpochManager.waitForDeployment();
-    return { seriesEpochManager };
-};
-
-async function deployRangeAmountCalculator () {
-    const RangeAmountCalculator = await ethers.getContractFactory('RangeAmountCalculator');
-    const rangeAmountCalculator = await RangeAmountCalculator.deploy();
-    await rangeAmountCalculator.waitForDeployment();
-    return { rangeAmountCalculator };
-};
+async function deploySeriesEpochManager() {
+  const SeriesEpochManager = await ethers.getContractFactory(
+    'SeriesEpochManager'
+  );
+  const seriesEpochManager = await SeriesEpochManager.deploy();
+  await seriesEpochManager.waitForDeployment();
+  return { seriesEpochManager };
+}
 
 module.exports = {
-    deploySwapTokens,
-    deploySeriesEpochManager,
-    deployRangeAmountCalculator,
-    deployUSDT,
-    deployUSDC,
-    deployArbitraryPredicate,
-    deploySwap,
+  deploySwapTokens,
+  deploySeriesEpochManager,
+  deployArbitraryPredicate,
 };
