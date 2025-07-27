@@ -31,12 +31,12 @@ Work only in the `frontend` folder:
   - [x] 1.6 Install dependencies via `npm install`.
   - [x] **[Human]** 1.7 Approve package name and publishing scope (public vs private).
 
-- [ ] 2.0 Core wrapper interface & utilities
-  - [ ] 2.1 Implement `src/extensions/utils/factory.js` exporting `createWrapper({ name, description, hooks, build }): ExtensionWrapper`.
-  - [ ] 2.2 Add `src/schemas/common.js` with Zod helpers (e.g., `address`, `uint256`, `UBigInt`).
-  - [ ] 2.3 Define `src/constants.js` constants for the four supported hooks.
-  - [ ] 2.4 Write unit tests in `test/extensions/utils/factory.test.js` for validation and meta integrity.
-  - [ ] 2.5 Add JSDoc to utilities and generate typings (`*.d.ts`) as stretch goal.
+- [x] 2.0 Core wrapper interface & utilities
+  - [x] 2.1 Implement `src/extensions/utils/factory.js` exporting `createWrapper({ name, description, hooks, build }): ExtensionWrapper`.
+  - [x] 2.2 Add `src/schemas/common.js` with Zod helpers (e.g., `address`, `uint256`, `UBigInt`).
+  - [x] 2.3 Define `src/constants.js` constants for the four supported hooks.
+  - [x] 2.4 Write unit tests in `test/extensions/utils/factory.test.js` for validation and meta integrity.
+  - [x] 2.5 Add JSDoc to utilities and generate typings (`*.d.ts`) as stretch goal.
 
 - [ ] 3.0 Extension wrapper implementations
   - [ ] 3.1 [Gas Station](/backend/contracts/extensions/GasStation.sol) wrapper (`src/extensions/gas-station.js`): define meta, hooks Zod schemas, and `build()` logic.
