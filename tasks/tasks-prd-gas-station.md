@@ -48,11 +48,11 @@
   - [x] 3.6 Run coverage & ensure >90 % for new contracts.
   - [x] 3.7 Add GitHub Actions job to run tests & coverage on every PR.
 
-- [ ] 4.0 Deployment & CI Pipeline
+- [x] ✅ 4.0 Deployment & CI Pipeline
 
-  - [ ] 4.1 Create `ignition/modules/GasStation.js` with constructor params and proper dependency wiring.
-  - [ ] 4.2 Add deployment script for local network.
+  - [x] 4.1 Create `ignition/modules/GasStation.js` with constructor params and proper dependency wiring.
+  - [x] 4.2 Add deployment script for local network.
 
-- [ ] 5.0 Documentation & Demo Resources
+- [x] ✅ 5.0 Documentation & Demo Resources
 
-  - [ ] 5.1 Create `docs/extensions/GasStation.md` with Gas Station overview, parameters, and example order JSON.
+  - [x] 5.1 Create `docs/extensions/GasStation.md` with Gas Station overview, parameters, and example order JSON.
