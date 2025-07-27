@@ -89,13 +89,13 @@ await expect(fn()).to.be.revertedWithCustomError(
 - When measuring gas, leverage utilities in [`utils.js`](mdc:test/helpers/utils.js) such as `calculateGasUsed` and `withTrace`.
 - Enable tracing only inside targeted tests and restore verbosity afterwards.
 
-## 11. Reference Tests (`orig-test/`)
+## 11. Reference Tests (`orig/test/`)
 
-The [`orig-test/`](mdc:orig-tests) directory contains unmodified test files ported from the upstream 1inch Limit Order Protocol repository.
+The [`orig/test/`](mdc:orig/tests) directory contains unmodified test files ported from the upstream 1inch Limit Order Protocol repository.
 These files are **not** executed by the default Hardhat test task and remain outside of the `test/` glob patterns.
 Use them purely as a reference when implementing or refactoring tests under `test/`; you may copy snippets or logic, but keep the original files untouched for historical comparison.
 
-No style rules are enforced for files inside `orig-test/`.
+No style rules are enforced for files inside `orig/test/`.
 
 - When measuring gas, leverage utilities in [`utils.js`](mdc:test/helpers/utils.js) such as `calculateGasUsed` and `withTrace`.
 - Enable tracing only inside targeted tests and restore verbosity afterwards.
