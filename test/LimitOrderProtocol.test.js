@@ -1,6 +1,6 @@
 const { ethers } = require('hardhat');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
-const { expect, time, permit2Contract } = require('@1inch/solidity-utils');
+const { expect, time } = require('@1inch/solidity-utils');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const {
   buildOrder,
@@ -20,7 +20,6 @@ async function deployContractsAndInit() {
   const tokens = { dai, weth, usdc };
   const contracts = { swap };
   const chainId = (await ethers.provider.getNetwork()).chainId;
-  contracts.permit2Contract = await permit2Contract();
   return {
     taker,
     maker,
@@ -133,218 +132,218 @@ async function deployContractsAndInit() {
 
 describe('LimitOrderProtocol', function () {
   describe('Permit', function () {
-    describe.skip('Taker Permit', function () {
-      it('DAI => WETH, no allowance', async function () {
-        const {
-          taker,
-          maker,
-          tokens,
-          contracts: { swap },
-          chainId,
-          createTakerPermitOrder,
-        } = await loadFixture(deployContractsAndInit);
-        const setup = {
-          makerAsset: tokens.weth,
-          takerAsset: tokens.dai,
-          makingAmount: '0.026797',
-          takingAmount: '100',
-        };
-        await setup.makerAsset.mint(maker, setup.makingAmount);
-        await setup.makerAsset.approve(maker, swap, setup.makingAmount);
-        await setup.takerAsset.mint(taker, setup.takingAmount);
-        // No initial approval for taker - they will use permit
-        const { makingAmount, takingAmount, order, r, vs } =
-          await createTakerPermitOrder({
-            makerAsset: setup.makerAsset,
-            takerAsset: setup.takerAsset,
-            makingAmount: setup.makingAmount,
-            takingAmount: setup.takingAmount,
-          });
-        const permit = await getPermit(
-          taker.address,
-          taker,
-          setup.takerAsset.contract,
-          '1',
-          chainId,
-          await swap.getAddress(),
-          takingAmount,
-          await defaultDeadline()
-        );
-        const takerTraits = buildTakerTraits({
-          // threshold: setup.makerAsset.parseAmount(setup.makingAmount),
-          makingAmount: true,
-        });
-        // Ensure allowance is 0
-        await setup.takerAsset.approve(taker, swap, '0');
-        const fillTx = swap.permitAndCall(
-          ethers.solidityPacked(
-            ['address', 'bytes'],
-            [setup.takerAsset.address, permit]
-          ),
-          swap.interface.encodeFunctionData('fillOrderArgs', [
-            order,
-            r,
-            vs,
-            makingAmount,
-            takerTraits.traits,
-            takerTraits.args,
-          ])
-        );
-        await expect(fillTx).to.changeTokenBalances(
-          setup.makerAsset.contract,
-          [taker.address, maker.address],
-          [makingAmount, -makingAmount]
-        );
-        await expect(fillTx).to.changeTokenBalances(
-          setup.takerAsset.contract,
-          [taker.address, maker.address],
-          [-takingAmount, takingAmount]
-        );
-      });
-      it('skips expired permit if allowance is enough', async function () {
-        const {
-          taker,
-          maker,
-          tokens,
-          contracts,
-          chainId,
-          createTakerPermitOrder,
-        } = await loadFixture(deployContractsAndInit);
-        const setup = {
-          makerAsset: tokens.dai,
-          takerAsset: tokens.weth,
-          makingAmount: '1',
-          takingAmount: '1',
-        };
-        await setup.makerAsset.mint(maker, setup.makingAmount);
-        await setup.makerAsset.approve(
-          maker,
-          contracts.swap,
-          setup.makingAmount
-        );
-        await setup.takerAsset.mint(taker, setup.takingAmount);
-        await setup.takerAsset.approve(
-          taker,
-          contracts.swap,
-          setup.takingAmount
-        );
-        const { order, r, vs } = await createTakerPermitOrder({
-          makerAsset: setup.makerAsset,
-          takerAsset: setup.takerAsset,
-          makingAmount: setup.makingAmount,
-          takingAmount: setup.takingAmount,
-        });
-        const deadline = (await time.latest()) - time.duration.weeks(1);
-        const permit = await getPermit(
-          taker.address,
-          taker,
-          setup.takerAsset.contract,
-          '1',
-          chainId,
-          await contracts.swap.getAddress(),
-          setup.takingAmount,
-          deadline
-        );
-        const fillTx = contracts.swap.permitAndCall(
-          ethers.solidityPacked(
-            ['address', 'bytes'],
-            [setup.takerAsset.address, permit]
-          ),
-          contracts.swap.interface.encodeFunctionData('fillOrderArgs', [
-            order,
-            r,
-            vs,
-            setup.takerAsset.parseAmount(setup.takingAmount),
-            buildTakerTraits({
-              threshold: setup.makerAsset.parseAmount(setup.makingAmount),
-            }).traits,
-            buildTakerTraits({
-              threshold: setup.makerAsset.parseAmount(setup.makingAmount),
-            }).args,
-          ])
-        );
-        await expect(fillTx).to.changeTokenBalances(
-          setup.makerAsset.contract,
-          [taker.address, maker.address],
-          [
-            setup.makerAsset.parseAmount(setup.makingAmount),
-            -setup.makerAsset.parseAmount(setup.makingAmount),
-          ]
-        );
-        await expect(fillTx).to.changeTokenBalances(
-          setup.takerAsset.contract,
-          [taker.address, maker.address],
-          [
-            -setup.takerAsset.parseAmount(setup.takingAmount),
-            setup.takerAsset.parseAmount(setup.takingAmount),
-          ]
-        );
-      });
-      it('rejects expired permit when allowance is not enough', async function () {
-        const {
-          taker,
-          maker,
-          tokens,
-          contracts,
-          chainId,
-          createTakerPermitOrder,
-        } = await loadFixture(deployContractsAndInit);
-        const setup = {
-          makerAsset: tokens.dai,
-          takerAsset: tokens.weth,
-          makingAmount: '1',
-          takingAmount: '1',
-        };
-        await setup.makerAsset.mint(maker, setup.makingAmount);
-        await setup.makerAsset.approve(
-          maker,
-          contracts.swap,
-          setup.makingAmount
-        );
-        await setup.takerAsset.mint(taker, setup.takingAmount);
-        const { order, r, vs } = await createTakerPermitOrder({
-          makerAsset: setup.makerAsset,
-          takerAsset: setup.takerAsset,
-          makingAmount: setup.makingAmount,
-          takingAmount: setup.takingAmount,
-        });
-        const deadline = (await time.latest()) - time.duration.weeks(1);
-        const permit = await getPermit(
-          taker.address,
-          taker,
-          setup.takerAsset.contract,
-          '1',
-          chainId,
-          await contracts.swap.getAddress(),
-          setup.takingAmount,
-          deadline
-        );
-        await setup.takerAsset.approve(taker, contracts.swap, '0');
-        await expect(
-          contracts.swap.permitAndCall(
-            ethers.solidityPacked(
-              ['address', 'bytes'],
-              [setup.takerAsset.address, permit]
-            ),
-            contracts.swap.interface.encodeFunctionData('fillOrderArgs', [
-              order,
-              r,
-              vs,
-              setup.takerAsset.parseAmount(setup.takingAmount),
-              buildTakerTraits({
-                threshold: setup.makerAsset.parseAmount(setup.makingAmount),
-              }).traits,
-              buildTakerTraits({
-                threshold: setup.makerAsset.parseAmount(setup.makingAmount),
-              }).args,
-            ])
-          )
-        ).to.be.revertedWithCustomError(
-          contracts.swap,
-          'TransferFromTakerToMakerFailed'
-        );
-      });
-    });
+    // describe('Taker Permit', function () {
+    //   it('DAI => WETH, no allowance', async function () {
+    //     const {
+    //       taker,
+    //       maker,
+    //       tokens,
+    //       contracts: { swap },
+    //       chainId,
+    //       createTakerPermitOrder,
+    //     } = await loadFixture(deployContractsAndInit);
+    //     const setup = {
+    //       makerAsset: tokens.weth,
+    //       takerAsset: tokens.dai,
+    //       makingAmount: '0.026797',
+    //       takingAmount: '100',
+    //     };
+    //     await setup.makerAsset.mint(maker, setup.makingAmount);
+    //     await setup.makerAsset.approve(maker, swap, setup.makingAmount);
+    //     await setup.takerAsset.mint(taker, setup.takingAmount);
+    //     // No initial approval for taker - they will use permit
+    //     const { makingAmount, takingAmount, order, r, vs } =
+    //       await createTakerPermitOrder({
+    //         makerAsset: setup.makerAsset,
+    //         takerAsset: setup.takerAsset,
+    //         makingAmount: setup.makingAmount,
+    //         takingAmount: setup.takingAmount,
+    //       });
+    //     const permit = await getPermit(
+    //       taker.address,
+    //       taker,
+    //       setup.takerAsset.contract,
+    //       '1',
+    //       chainId,
+    //       await swap.getAddress(),
+    //       takingAmount,
+    //       await defaultDeadline()
+    //     );
+    //     const takerTraits = buildTakerTraits({
+    //       // threshold: setup.makerAsset.parseAmount(setup.makingAmount),
+    //       makingAmount: true,
+    //     });
+    //     // Ensure allowance is 0
+    //     await setup.takerAsset.approve(taker, swap, '0');
+    //     const fillTx = swap.permitAndCall(
+    //       ethers.solidityPacked(
+    //         ['address', 'bytes'],
+    //         [setup.takerAsset.address, permit]
+    //       ),
+    //       swap.interface.encodeFunctionData('fillOrderArgs', [
+    //         order,
+    //         r,
+    //         vs,
+    //         makingAmount,
+    //         takerTraits.traits,
+    //         takerTraits.args,
+    //       ])
+    //     );
+    //     await expect(fillTx).to.changeTokenBalances(
+    //       setup.makerAsset.contract,
+    //       [taker.address, maker.address],
+    //       [makingAmount, -makingAmount]
+    //     );
+    //     await expect(fillTx).to.changeTokenBalances(
+    //       setup.takerAsset.contract,
+    //       [taker.address, maker.address],
+    //       [-takingAmount, takingAmount]
+    //     );
+    //   });
+    //   it('skips expired permit if allowance is enough', async function () {
+    //     const {
+    //       taker,
+    //       maker,
+    //       tokens,
+    //       contracts,
+    //       chainId,
+    //       createTakerPermitOrder,
+    //     } = await loadFixture(deployContractsAndInit);
+    //     const setup = {
+    //       makerAsset: tokens.dai,
+    //       takerAsset: tokens.weth,
+    //       makingAmount: '1',
+    //       takingAmount: '1',
+    //     };
+    //     await setup.makerAsset.mint(maker, setup.makingAmount);
+    //     await setup.makerAsset.approve(
+    //       maker,
+    //       contracts.swap,
+    //       setup.makingAmount
+    //     );
+    //     await setup.takerAsset.mint(taker, setup.takingAmount);
+    //     await setup.takerAsset.approve(
+    //       taker,
+    //       contracts.swap,
+    //       setup.takingAmount
+    //     );
+    //     const { order, r, vs } = await createTakerPermitOrder({
+    //       makerAsset: setup.makerAsset,
+    //       takerAsset: setup.takerAsset,
+    //       makingAmount: setup.makingAmount,
+    //       takingAmount: setup.takingAmount,
+    //     });
+    //     const deadline = (await time.latest()) - time.duration.weeks(1);
+    //     const permit = await getPermit(
+    //       taker.address,
+    //       taker,
+    //       setup.takerAsset.contract,
+    //       '1',
+    //       chainId,
+    //       await contracts.swap.getAddress(),
+    //       setup.takingAmount,
+    //       deadline
+    //     );
+    //     const fillTx = contracts.swap.permitAndCall(
+    //       ethers.solidityPacked(
+    //         ['address', 'bytes'],
+    //         [setup.takerAsset.address, permit]
+    //       ),
+    //       contracts.swap.interface.encodeFunctionData('fillOrderArgs', [
+    //         order,
+    //         r,
+    //         vs,
+    //         setup.takerAsset.parseAmount(setup.takingAmount),
+    //         buildTakerTraits({
+    //           threshold: setup.makerAsset.parseAmount(setup.makingAmount),
+    //         }).traits,
+    //         buildTakerTraits({
+    //           threshold: setup.makerAsset.parseAmount(setup.makingAmount),
+    //         }).args,
+    //       ])
+    //     );
+    //     await expect(fillTx).to.changeTokenBalances(
+    //       setup.makerAsset.contract,
+    //       [taker.address, maker.address],
+    //       [
+    //         setup.makerAsset.parseAmount(setup.makingAmount),
+    //         -setup.makerAsset.parseAmount(setup.makingAmount),
+    //       ]
+    //     );
+    //     await expect(fillTx).to.changeTokenBalances(
+    //       setup.takerAsset.contract,
+    //       [taker.address, maker.address],
+    //       [
+    //         -setup.takerAsset.parseAmount(setup.takingAmount),
+    //         setup.takerAsset.parseAmount(setup.takingAmount),
+    //       ]
+    //     );
+    //   });
+    //   it('rejects expired permit when allowance is not enough', async function () {
+    //     const {
+    //       taker,
+    //       maker,
+    //       tokens,
+    //       contracts,
+    //       chainId,
+    //       createTakerPermitOrder,
+    //     } = await loadFixture(deployContractsAndInit);
+    //     const setup = {
+    //       makerAsset: tokens.dai,
+    //       takerAsset: tokens.weth,
+    //       makingAmount: '1',
+    //       takingAmount: '1',
+    //     };
+    //     await setup.makerAsset.mint(maker, setup.makingAmount);
+    //     await setup.makerAsset.approve(
+    //       maker,
+    //       contracts.swap,
+    //       setup.makingAmount
+    //     );
+    //     await setup.takerAsset.mint(taker, setup.takingAmount);
+    //     const { order, r, vs } = await createTakerPermitOrder({
+    //       makerAsset: setup.makerAsset,
+    //       takerAsset: setup.takerAsset,
+    //       makingAmount: setup.makingAmount,
+    //       takingAmount: setup.takingAmount,
+    //     });
+    //     const deadline = (await time.latest()) - time.duration.weeks(1);
+    //     const permit = await getPermit(
+    //       taker.address,
+    //       taker,
+    //       setup.takerAsset.contract,
+    //       '1',
+    //       chainId,
+    //       await contracts.swap.getAddress(),
+    //       setup.takingAmount,
+    //       deadline
+    //     );
+    //     await setup.takerAsset.approve(taker, contracts.swap, '0');
+    //     await expect(
+    //       contracts.swap.permitAndCall(
+    //         ethers.solidityPacked(
+    //           ['address', 'bytes'],
+    //           [setup.takerAsset.address, permit]
+    //         ),
+    //         contracts.swap.interface.encodeFunctionData('fillOrderArgs', [
+    //           order,
+    //           r,
+    //           vs,
+    //           setup.takerAsset.parseAmount(setup.takingAmount),
+    //           buildTakerTraits({
+    //             threshold: setup.makerAsset.parseAmount(setup.makingAmount),
+    //           }).traits,
+    //           buildTakerTraits({
+    //             threshold: setup.makerAsset.parseAmount(setup.makingAmount),
+    //           }).args,
+    //         ])
+    //       )
+    //     ).to.be.revertedWithCustomError(
+    //       contracts.swap,
+    //       'TransferFromTakerToMakerFailed'
+    //     );
+    //   });
+    // });
     describe('Maker Permit', function () {
       it('Maker permit works, no allowance', async function () {
         const {
