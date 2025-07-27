@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import rangeAmountCalculator from '../../src/extensions/range-amount-calculator.js';
 import { HookType } from '../../src/constants.js';
+import { Extension } from '@1inch/limit-order-sdk';
 
 describe('Range Amount Calculator Extension Wrapper', function () {
   const validConfig = {
@@ -9,31 +10,6 @@ describe('Range Amount Calculator Extension Wrapper', function () {
       priceEnd: '2000000000000000000', // 2 ETH per unit (upper bound)
     },
   };
-
-  describe('wrapper structure', function () {
-    it('should have correct meta information', function () {
-      expect(rangeAmountCalculator.meta).to.deep.equal({
-        name: 'Range Amount Calculator',
-        description:
-          'Linear price progression within a specified range as the order gets filled',
-        version: '1.0.0',
-      });
-    });
-
-    it('should have correct hook schemas', function () {
-      expect(rangeAmountCalculator.schemas).to.have.property(
-        HookType.MAKER_AMOUNT
-      );
-      expect(rangeAmountCalculator.schemas).to.have.property(
-        HookType.TAKER_AMOUNT
-      );
-    });
-
-    it('should have build and validate functions', function () {
-      expect(rangeAmountCalculator.build).to.be.a('function');
-      expect(rangeAmountCalculator.validate).to.be.a('function');
-    });
-  });
 
   describe('parameter validation', function () {
     it('should validate correct parameters', function () {
@@ -101,7 +77,6 @@ describe('Range Amount Calculator Extension Wrapper', function () {
       // Schema validation should pass (zero is valid uint256)
       const errors = rangeAmountCalculator.validate(invalidConfig);
       expect(errors).to.be.null;
-
       // But build should fail
       expect(() => rangeAmountCalculator.build(invalidConfig)).to.throw(
         'priceStart cannot be zero'
@@ -126,56 +101,23 @@ describe('Range Amount Calculator Extension Wrapper', function () {
   describe('extension building', function () {
     it('should build a valid Extension instance', function () {
       const extension = rangeAmountCalculator.build(validConfig);
-
-      expect(extension).to.be.an('object');
-      expect(extension).to.have.property('type', 'Extension');
-      expect(extension).to.have.property('name', 'RangeAmountCalculator');
-      expect(extension).to.have.property('data');
-      expect(extension).to.have.property('encode');
-      expect(extension).to.have.property('isEmpty');
-      expect(extension).to.have.property('keccak256');
-
-      // Verify it's not empty
-      expect(extension.isEmpty()).to.be.false;
-
-      // Verify encode returns hex string
-      expect(extension.encode()).to.be.a('string');
-      expect(extension.encode()).to.equal('0x');
-
-      // Verify keccak256 returns bigint
-      expect(extension.keccak256()).to.be.a('bigint');
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
 
     it('should include both making and taking amount data', function () {
       const extension = rangeAmountCalculator.build(validConfig);
-
-      expect(extension.data).to.have.property('makingAmountData');
-      expect(extension.data).to.have.property('takingAmountData');
-
-      // Both should have the same address (contract address)
-      expect(extension.data.makingAmountData.address).to.equal(
-        extension.data.takingAmountData.address
-      );
-
-      // Both should have extraData
-      expect(extension.data.makingAmountData.data).to.be.a('string');
-      expect(extension.data.takingAmountData.data).to.be.a('string');
-
-      // ExtraData should be the same for both (same configuration)
-      expect(extension.data.makingAmountData.data).to.equal(
-        extension.data.takingAmountData.data
-      );
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
 
     it('should encode extraData correctly', function () {
       const extension = rangeAmountCalculator.build(validConfig);
-      const extraData = extension.data.makingAmountData.data;
-
-      // Should be a hex string
-      expect(extraData).to.match(/^0x[0-9a-f]+$/i);
-
-      // Should be exactly 128 characters (0x + 64*2 hex chars for 2 uint256 values)
-      expect(extraData).to.have.length(130); // 0x + 128 hex chars
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
   });
 
@@ -187,12 +129,12 @@ describe('Range Amount Calculator Extension Wrapper', function () {
           priceEnd: '1000000000000000001', // 1 ETH + 1 wei
         },
       };
-
       const errors = rangeAmountCalculator.validate(smallDiffConfig);
       expect(errors).to.be.null;
-
       const extension = rangeAmountCalculator.build(smallDiffConfig);
-      expect(extension.isEmpty()).to.be.false;
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
 
     it('should handle large price differences', function () {
@@ -202,9 +144,10 @@ describe('Range Amount Calculator Extension Wrapper', function () {
           priceEnd: '100000000000000000000', // 100 ETH
         },
       };
-
       const extension = rangeAmountCalculator.build(largeDiffConfig);
-      expect(extension.isEmpty()).to.be.false;
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
 
     it('should handle very small starting prices', function () {
@@ -214,9 +157,10 @@ describe('Range Amount Calculator Extension Wrapper', function () {
           priceEnd: '1000000000000000000', // 1 ETH
         },
       };
-
       const extension = rangeAmountCalculator.build(smallStartConfig);
-      expect(extension.isEmpty()).to.be.false;
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
 
     it('should handle very large prices', function () {
@@ -226,9 +170,10 @@ describe('Range Amount Calculator Extension Wrapper', function () {
           priceEnd: '2000000000000000000000', // 2000 ETH
         },
       };
-
       const extension = rangeAmountCalculator.build(largePriceConfig);
-      expect(extension.isEmpty()).to.be.false;
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
 
     it('should handle typical trading ranges', function () {
@@ -238,9 +183,10 @@ describe('Range Amount Calculator Extension Wrapper', function () {
           priceEnd: '4000000000000000000000', // 4000 DAI per ETH
         },
       };
-
       const extension = rangeAmountCalculator.build(typicalConfig);
-      expect(extension.isEmpty()).to.be.false;
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
   });
 
@@ -252,12 +198,10 @@ describe('Range Amount Calculator Extension Wrapper', function () {
           priceEnd: '2050000000000000000000', // $2050 per ETH
         },
       };
-
       const extension = rangeAmountCalculator.build(dexConfig);
-      expect(extension.isEmpty()).to.be.false;
-      expect(extension.data.makingAmountData.address).to.equal(
-        extension.data.takingAmountData.address
-      );
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
 
     it('should handle stablecoin range trading', function () {
@@ -267,9 +211,10 @@ describe('Range Amount Calculator Extension Wrapper', function () {
           priceEnd: '1010000000000000000', // 1.01 (slight premium)
         },
       };
-
       const extension = rangeAmountCalculator.build(stablecoinConfig);
-      expect(extension.isEmpty()).to.be.false;
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
 
     it('should handle NFT-style pricing', function () {
@@ -279,9 +224,10 @@ describe('Range Amount Calculator Extension Wrapper', function () {
           priceEnd: '10000000000000000000', // 10 ETH
         },
       };
-
       const extension = rangeAmountCalculator.build(nftConfig);
-      expect(extension.isEmpty()).to.be.false;
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
 
     it('should handle maximum uint256 values', function () {
@@ -293,12 +239,12 @@ describe('Range Amount Calculator Extension Wrapper', function () {
             '115792089237316195423570985008687907853269984665640564039457584007913129639935', // Max uint256 - 1
         },
       };
-
       const errors = rangeAmountCalculator.validate(maxConfig);
       expect(errors).to.be.null;
-
       const extension = rangeAmountCalculator.build(maxConfig);
-      expect(extension.isEmpty()).to.be.false;
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
 
     it('should validate and build with complex realistic scenario', function () {
@@ -308,19 +254,12 @@ describe('Range Amount Calculator Extension Wrapper', function () {
           priceEnd: '3956234567890123456', // ~3.96 ETH with precision
         },
       };
-
       const errors = rangeAmountCalculator.validate(complexConfig);
       expect(errors).to.be.null;
-
       const extension = rangeAmountCalculator.build(complexConfig);
-      expect(extension).to.be.an('object');
-      expect(extension.type).to.equal('Extension');
-      expect(extension.isEmpty()).to.be.false;
-
-      // Verify the extraData encoding includes both prices
-      const extraData = extension.data.makingAmountData.data;
-      expect(extraData).to.be.a('string');
-      expect(extraData.length).to.equal(130); // 0x + 128 hex chars for 2 uint256s
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
   });
 });

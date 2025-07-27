@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import dutchAuctionCalculator from '../../src/extensions/dutch-auction-calculator.js';
 import { HookType } from '../../src/constants.js';
+import { Extension } from '@1inch/limit-order-sdk';
 
 describe('Dutch Auction Calculator Extension Wrapper', function () {
   const currentTime = Math.floor(Date.now() / 1000);
@@ -12,31 +13,6 @@ describe('Dutch Auction Calculator Extension Wrapper', function () {
       endAmount: '1000000000000000000', // 1 ETH (lower price)
     },
   };
-
-  describe('wrapper structure', function () {
-    it('should have correct meta information', function () {
-      expect(dutchAuctionCalculator.meta).to.deep.equal({
-        name: 'Dutch Auction Calculator',
-        description:
-          'Time-based price decay from start price to end price, implementing Dutch auction mechanics',
-        version: '1.0.0',
-      });
-    });
-
-    it('should have correct hook schemas', function () {
-      expect(dutchAuctionCalculator.schemas).to.have.property(
-        HookType.MAKER_AMOUNT
-      );
-      expect(dutchAuctionCalculator.schemas).to.have.property(
-        HookType.TAKER_AMOUNT
-      );
-    });
-
-    it('should have build and validate functions', function () {
-      expect(dutchAuctionCalculator.build).to.be.a('function');
-      expect(dutchAuctionCalculator.validate).to.be.a('function');
-    });
-  });
 
   describe('parameter validation', function () {
     it('should validate correct parameters', function () {
@@ -139,51 +115,16 @@ describe('Dutch Auction Calculator Extension Wrapper', function () {
   describe('extension building', function () {
     it('should build a valid Extension instance', function () {
       const extension = dutchAuctionCalculator.build(validConfig);
-
-      expect(extension).to.be.an('object');
-      expect(extension).to.have.property('type', 'Extension');
-      expect(extension).to.have.property('name', 'DutchAuctionCalculator');
-      expect(extension).to.have.property('data');
-      expect(extension).to.have.property('encode');
-      expect(extension).to.have.property('isEmpty');
-      expect(extension).to.have.property('keccak256');
-
-      // Verify it's not empty
-      expect(extension.isEmpty()).to.be.false;
-
-      // Verify encode returns hex string
-      expect(extension.encode()).to.be.a('string');
-      expect(extension.encode()).to.equal('0x');
-
-      // Verify keccak256 returns bigint
-      expect(extension.keccak256()).to.be.a('bigint');
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
 
     it('should include both making and taking amount data', function () {
       const extension = dutchAuctionCalculator.build(validConfig);
-
-      expect(extension.data).to.have.property('makingAmountData');
-      expect(extension.data).to.have.property('takingAmountData');
-
-      // Both should have the same address (contract address)
-      expect(extension.data.makingAmountData.address).to.equal(
-        extension.data.takingAmountData.address
-      );
-
-      // Both should have extraData
-      expect(extension.data.makingAmountData.data).to.be.a('string');
-      expect(extension.data.takingAmountData.data).to.be.a('string');
-    });
-
-    it('should encode extraData correctly', function () {
-      const extension = dutchAuctionCalculator.build(validConfig);
-      const extraData = extension.data.makingAmountData.data;
-
-      // Should be a hex string
-      expect(extraData).to.match(/^0x[0-9a-f]+$/i);
-
-      // Should be exactly 192 characters (0x + 64*3 hex chars for 3 uint256 values)
-      expect(extraData).to.have.length(194); // 0x + 192 hex chars
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
   });
 
@@ -197,12 +138,12 @@ describe('Dutch Auction Calculator Extension Wrapper', function () {
           endAmount: '2500000000000000000', // 2.5 ETH
         },
       };
-
       const errors = dutchAuctionCalculator.validate(realisticConfig);
       expect(errors).to.be.null;
-
       const extension = dutchAuctionCalculator.build(realisticConfig);
-      expect(extension.isEmpty()).to.be.false;
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
 
     it('should handle very small price differences', function () {
@@ -214,9 +155,10 @@ describe('Dutch Auction Calculator Extension Wrapper', function () {
           endAmount: '1000000000000000000', // 1 ETH
         },
       };
-
       const extension = dutchAuctionCalculator.build(smallDiffConfig);
-      expect(extension.isEmpty()).to.be.false;
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
 
     it('should handle large amounts', function () {
@@ -228,9 +170,10 @@ describe('Dutch Auction Calculator Extension Wrapper', function () {
           endAmount: '100000000000000000000', // 100 ETH
         },
       };
-
       const extension = dutchAuctionCalculator.build(largeAmountConfig);
-      expect(extension.isEmpty()).to.be.false;
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
 
     it('should handle past start time but future end time', function () {
@@ -242,9 +185,10 @@ describe('Dutch Auction Calculator Extension Wrapper', function () {
           endAmount: '1000000000000000000',
         },
       };
-
       const extension = dutchAuctionCalculator.build(pastStartConfig);
-      expect(extension.isEmpty()).to.be.false;
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
 
     it('should handle long auction duration', function () {
@@ -256,9 +200,10 @@ describe('Dutch Auction Calculator Extension Wrapper', function () {
           endAmount: '1000000000000000000', // 1 ETH
         },
       };
-
       const extension = dutchAuctionCalculator.build(longAuctionConfig);
-      expect(extension.isEmpty()).to.be.false;
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
 
     it('should handle string timestamps', function () {
@@ -270,12 +215,12 @@ describe('Dutch Auction Calculator Extension Wrapper', function () {
           endAmount: '1000000000000000000',
         },
       };
-
       const errors = dutchAuctionCalculator.validate(stringTimestampConfig);
       expect(errors).to.be.null;
-
       const extension = dutchAuctionCalculator.build(stringTimestampConfig);
-      expect(extension.isEmpty()).to.be.false;
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
   });
 });

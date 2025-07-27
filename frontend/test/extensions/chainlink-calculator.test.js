@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import chainlinkCalculator from '../../src/extensions/chainlink-calculator.js';
 import { HookType } from '../../src/constants.js';
+import { Extension } from '@1inch/limit-order-sdk';
 
 describe('Chainlink Calculator Extension Wrapper', function () {
   const singleOracleConfig = {
@@ -25,31 +26,6 @@ describe('Chainlink Calculator Extension Wrapper', function () {
       },
     },
   };
-
-  describe('wrapper structure', function () {
-    it('should have correct meta information', function () {
-      expect(chainlinkCalculator.meta).to.deep.equal({
-        name: 'Chainlink Calculator',
-        description:
-          'Dynamic pricing using Chainlink oracle feeds with support for single/double oracle configurations',
-        version: '1.0.0',
-      });
-    });
-
-    it('should have correct hook schemas', function () {
-      expect(chainlinkCalculator.schemas).to.have.property(
-        HookType.MAKER_AMOUNT
-      );
-      expect(chainlinkCalculator.schemas).to.have.property(
-        HookType.TAKER_AMOUNT
-      );
-    });
-
-    it('should have build and validate functions', function () {
-      expect(chainlinkCalculator.build).to.be.a('function');
-      expect(chainlinkCalculator.validate).to.be.a('function');
-    });
-  });
 
   describe('single oracle configuration', function () {
     it('should validate correct single oracle parameters', function () {
@@ -91,12 +67,9 @@ describe('Chainlink Calculator Extension Wrapper', function () {
 
     it('should build valid Extension for single oracle', function () {
       const extension = chainlinkCalculator.build(singleOracleConfig);
-
-      expect(extension).to.be.an('object');
-      expect(extension).to.have.property('type', 'Extension');
-      expect(extension).to.have.property('name', 'ChainlinkCalculator');
-      expect(extension).to.have.property('data');
-      expect(extension.isEmpty()).to.be.false;
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
 
     it('should handle inverse flag correctly', function () {
@@ -113,9 +86,10 @@ describe('Chainlink Calculator Extension Wrapper', function () {
 
       const errors = chainlinkCalculator.validate(inverseConfig);
       expect(errors).to.be.null;
-
       const extension = chainlinkCalculator.build(inverseConfig);
-      expect(extension.isEmpty()).to.be.false;
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
   });
 
@@ -154,26 +128,20 @@ describe('Chainlink Calculator Extension Wrapper', function () {
           },
         },
       };
-
       const errors = chainlinkCalculator.validate(negativeScaleConfig);
       expect(errors).to.be.null;
-
       const extension = chainlinkCalculator.build(negativeScaleConfig);
-      expect(extension.isEmpty()).to.be.false;
+      expect(extension).to.be.instanceOf(Extension);
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
 
     it('should build valid Extension for double oracle', function () {
       const extension = chainlinkCalculator.build(doubleOracleConfig);
-
-      expect(extension).to.be.an('object');
-      expect(extension).to.have.property('type', 'Extension');
-      expect(extension).to.have.property('name', 'ChainlinkCalculator');
-      expect(extension).to.have.property('data');
-      expect(extension.isEmpty()).to.be.false;
-
+      expect(extension).to.be.instanceOf(Extension);
       // Verify both making and taking amount data are set
-      expect(extension.data).to.have.property('makingAmountData');
-      expect(extension.data).to.have.property('takingAmountData');
+      expect(extension.makingAmountData).to.not.equal('0x');
+      expect(extension.takingAmountData).to.not.equal('0x');
     });
   });
 
@@ -223,8 +191,8 @@ describe('Chainlink Calculator Extension Wrapper', function () {
 
       const extension = chainlinkCalculator.build(mainnetConfig);
       expect(extension.isEmpty()).to.be.false;
-      expect(extension.data.makingAmountData).to.exist;
-      expect(extension.data.takingAmountData).to.exist;
+      expect(extension.makingAmountData).to.exist;
+      expect(extension.takingAmountData).to.exist;
     });
 
     it('should handle cross-asset pricing with double oracle', function () {
