@@ -9,10 +9,11 @@ Work only in the `frontend` folder:
 - `frontend/src/schemas/common.js` - Reusable Zod primitives (e.g., `address`, `uint256`).
 - `frontend/src/constants.js` - Constants/enums e.g. for LOP hooks (`makerAmount`, `takerAmount`, etc.).
 - `frontend/src/extensions/utils/factory.js` - Utility to standardise wrapper creation (meta, schemas, build helper).
+- `frontend/src/index.js` - Main entry point re-exporting all wrappers, utilities, and schemas.
 - `frontend/src/extensions/gas-station.js` - Gas Station extension wrapper definition.
 - `frontend/src/extensions/chainlink-calculator.js` - Chainlink Calculator extension wrapper definition.
-- `frontend/src/extensions/dutch-auction-calculator.js` - Dutch Auction Calculator extension wrapper definition.
-- `frontend/src/extensions/range-amount-calculator.js` - Range Amount Calculator extension wrapper definition.
+- `frontend/src/extensions/dutch-auction-calculator.js` - Dutch Auction Calculator extension wrapper with time-based price decay.
+- `frontend/src/extensions/range-amount-calculator.js` - Range Amount Calculator extension wrapper with linear price progression.
 - `frontend/test/extensions/utils/factory.test.js` - Unit tests for utility functions.
 - `frontend/test/extensions/gas-station.test.js` - Unit tests for Gas Station wrapper.
 - `frontend/test/extensions/chainlink-calculator.test.js` - Unit tests for Chainlink Calculator wrapper.
@@ -38,13 +39,13 @@ Work only in the `frontend` folder:
   - [x] 2.4 Write unit tests in `test/extensions/utils/factory.test.js` for validation and meta integrity.
   - [x] 2.5 Add JSDoc to utilities and generate typings (`*.d.ts`) as stretch goal.
 
-- [ ] 3.0 Extension wrapper implementations
-  - [ ] 3.1 [Gas Station](/backend/contracts/extensions/GasStation.sol) wrapper (`src/extensions/gas-station.js`): define meta, hooks Zod schemas, and `build()` logic.
-  - [ ] 3.2 [Chainlink Calculator](/backend/node_modules/@1inch/limit-order-protocol-contract/contracts/extensions/ChainlinkCalculator.sol) wrapper (`src/extensions/chainlink-calculator.js`).
-  - [ ] 3.3 [Dutch Auction Calculator](/backend/node_modules/@1inch/limit-order-protocol-contract/contracts/extensions/DutchAuctionCalculator.sol) wrapper (`src/extensions/dutch-auction-calculator.js`).
-  - [ ] 3.4 [Range Amount Calculator](/backend/node_modules/@1inch/limit-order-protocol-contract/contracts/extensions/RangeAmountCalculator.sol) wrapper (`src/extensions/range-amount-calculator.js`).
-  - [ ] 3.5 Re-export new wrappers in `src/index.js`.
-  - [ ] 3.6 Ensure schema objects are exported for external validation reuse.
+- [x] 3.0 Extension wrapper implementations
+  - [x] 3.1 [Gas Station](/backend/contracts/extensions/GasStation.sol) wrapper (`src/extensions/gas-station.js`): define meta, hooks Zod schemas, and `build()` logic.
+  - [x] 3.2 [Chainlink Calculator](/backend/node_modules/@1inch/limit-order-protocol-contract/contracts/extensions/ChainlinkCalculator.sol) wrapper (`src/extensions/chainlink-calculator.js`).
+  - [x] 3.3 [Dutch Auction Calculator](/backend/node_modules/@1inch/limit-order-protocol-contract/contracts/extensions/DutchAuctionCalculator.sol) wrapper (`src/extensions/dutch-auction-calculator.js`).
+  - [x] 3.4 [Range Amount Calculator](/backend/node_modules/@1inch/limit-order-protocol-contract/contracts/extensions/RangeAmountCalculator.sol) wrapper (`src/extensions/range-amount-calculator.js`).
+  - [x] 3.5 Re-export new wrappers in `src/index.js`.
+  - [x] 3.6 Ensure schema objects are exported for external validation reuse.
 
 - [ ] 4.0 Unit testing & coverage
   - [ ] 4.1 Write success-path tests asserting `build()` returns a valid SDK `Extension` instance for each wrapper.

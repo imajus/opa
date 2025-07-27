@@ -10,9 +10,8 @@ export const HookType = {
   MAKER_AMOUNT: 'makerAmount',
   TAKER_AMOUNT: 'takerAmount',
   PRE_INTERACTION: 'preInteraction',
-  POST_INTERACTION: 'postInteraction',
+  POST_INTERACTION: 'postInteraction'
 };
-
 /**
  * Array of all supported hook types for iteration
  */
