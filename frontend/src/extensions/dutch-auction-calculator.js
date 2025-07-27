@@ -93,6 +93,3 @@ const dutchAuctionCalculatorWrapper = createWrapper({
 });
 
 export default dutchAuctionCalculatorWrapper;
-
-// Export schemas for external validation reuse
-export { DutchAuctionConfigSchema };

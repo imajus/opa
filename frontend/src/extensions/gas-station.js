@@ -48,23 +48,23 @@ const gasStationWrapper = createWrapper({
     const builder = new ExtensionBuilder();
     builder.withMakingAmountData(
       target,
-      '0x' // Empty data - Gas Station uses view functions for calculation
+      '0x00' // Empty data - Gas Station uses view functions for calculation
     );
     // Set taking amount calculation (reverse calculation for required maker asset)
     builder.withTakingAmountData(
       target,
-      '0x' // Empty data - Gas Station uses view functions for calculation
+      '0x00' // Empty data - Gas Station uses view functions for calculation
     );
     // Set pre-interaction (flash loan initiation)
     const preInteraction = new Interaction({
       target,
-      data: '0x', // Gas Station will handle the flash loan logic internally
+      data: '0x00', // Gas Station will handle the flash loan logic internally
     });
     builder.withPreInteraction(preInteraction);
     // Set post-interaction (swap and repayment)
     const postInteraction = new Interaction({
       target,
-      data: '0x', // Gas Station will handle the swap and repayment logic internally
+      data: '0x00', // Gas Station will handle the swap and repayment logic internally
     });
     builder.withPostInteraction(postInteraction);
     // Build and return the Extension
@@ -73,6 +73,3 @@ const gasStationWrapper = createWrapper({
 });
 
 export default gasStationWrapper;
-
-// Export schemas for external validation reuse
-export { GasStationConfigSchema };
