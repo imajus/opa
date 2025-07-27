@@ -2,8 +2,7 @@ import { z } from 'zod';
 import { ExtensionBuilder, Interaction, Address } from '@1inch/limit-order-sdk';
 import { createWrapper } from './utils/factory.js';
 import { HookType } from '../constants.js';
-
-const CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000000';
+import { config } from '../config.js';
 
 /**
  * Gas Station extension wrapper for 1inch Limit Order Protocol
@@ -44,7 +43,8 @@ const gasStationWrapper = createWrapper({
    * @returns {Extension} 1inch SDK Extension instance
    */
   build() {
-    const target = new Address(CONTRACT_ADDRESS);
+    const { address } = config.extensions.gasStation;
+    const target = new Address(address);
     const builder = new ExtensionBuilder();
     builder.withMakingAmountData(
       target,
