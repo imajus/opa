@@ -85,9 +85,10 @@ export function createWrapper(config) {
      * @returns {*} Extension instance created by the configured build function
      * @throws {import('zod').ZodError} When parameters fail validation
      */
-    build: function (params) {
+    build(params) {
       const hookEntries = Object.entries(hooks);
       const validatedParams = {};
+
       for (const [hookName, schema] of hookEntries) {
         if (params[hookName] !== undefined) {
           validatedParams[hookName] = schema.parse(params[hookName]);
@@ -100,9 +101,10 @@ export function createWrapper(config) {
      * @param {Object} params - Parameters to validate
      * @returns {Object|null} Validation errors object or null if valid
      */
-    validate: function (params) {
+    validate(params) {
       const errors = {};
       const hookEntries = Object.entries(hooks);
+
       for (const [hookName, schema] of hookEntries) {
         if (params[hookName] !== undefined) {
           try {
