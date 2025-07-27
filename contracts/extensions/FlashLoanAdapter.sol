@@ -70,7 +70,9 @@ contract FlashLoanAdapter {
 
     /**
      * @notice Callback function for Aave v3 flash loan
-     * @dev This function is called by Aave Pool during flash loan execution
+     * @dev This function is called by Aave Pool during flash loan execution.
+     *      Since this adapter is used via delegatecall, this callback should never be called directly.
+     *      The actual executeOperation will be handled by the calling contract (Gas Station).
      * @param asset The address of the flash-borrowed asset
      * @param amount The amount of the flash-borrowed asset
      * @param premium The fee of the flash-borrowed asset
@@ -84,14 +86,11 @@ contract FlashLoanAdapter {
         uint256 premium,
         address initiator,
         bytes calldata params
-    ) external returns (bool) {
-        // This callback is handled by the Gas Station contract itself
-        // The flash loan adapter is just a minimal wrapper for the initial call
-        // The actual logic will be in the Gas Station's executeOperation function
-        
-        // Delegate back to the calling contract (Gas Station) for processing
-        // This design allows the Gas Station to handle the flash loan logic
-        return true;
+    ) external pure returns (bool) {
+        // This function should never be called directly when using delegatecall pattern
+        // The Gas Station contract will handle the actual executeOperation callback
+        // This exists only to satisfy the interface requirements
+        return false;
     }
 
     /**
@@ -103,5 +102,38 @@ contract FlashLoanAdapter {
     function getFlashLoanFee(uint256 amount) external pure returns (uint256) {
         // Aave v3 flash loan fee is 0.05% (5 basis points)
         return (amount * 5) / 10000;
+    }
+
+    /**
+     * @notice Calculate total repayment amount (principal + fee)
+     * @dev Helper function for repayment accounting
+     * @param principal The original borrowed amount
+     * @return totalRepayment The total amount that needs to be repaid
+     */
+    function calculateTotalRepayment(uint256 principal) external pure returns (uint256 totalRepayment) {
+        // Aave v3 flash loan fee is 0.05% (5 basis points)
+        uint256 fee = (principal * 5) / 10000;
+        return principal + fee;
+    }
+
+    /**
+     * @notice Validate flash loan parameters before execution
+     * @dev Ensures the flash loan request is properly structured
+     * @param pool The Aave v3 Pool address
+     * @param asset The asset to borrow
+     * @param amount The amount to borrow
+     * @param receiver The receiver of the flash loan
+     * @return isValid True if parameters are valid
+     */
+    function validateFlashLoanParams(
+        address pool,
+        address asset,
+        uint256 amount,
+        address receiver
+    ) external pure returns (bool isValid) {
+        return pool != address(0) && 
+               asset != address(0) && 
+               amount > 0 && 
+               receiver != address(0);
     }
 } 

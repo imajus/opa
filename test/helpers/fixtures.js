@@ -107,8 +107,89 @@ async function deploySeriesEpochManager() {
   return { seriesEpochManager };
 }
 
+async function deployGasStationWithMocks() {
+  const [deployer] = await ethers.getSigners();
+
+  // Deploy mock contracts for testing
+  const MockAavePool = await ethers.getContractFactory('MockAavePool');
+  const mockAavePool = await MockAavePool.deploy();
+  await mockAavePool.waitForDeployment();
+
+  // Deploy FlashLoanAdapter
+  const FlashLoanAdapter = await ethers.getContractFactory('FlashLoanAdapter');
+  const flashLoanAdapter = await FlashLoanAdapter.deploy();
+  await flashLoanAdapter.waitForDeployment();
+
+  // Deploy basic tokens for testing
+  const TokenMock = await ethers.getContractFactory('TokenMock');
+  const WrappedTokenMock = await ethers.getContractFactory('WrappedTokenMock');
+
+  const usdc = await TokenMock.deploy('USDC', 'USDC');
+  const dai = await TokenMock.deploy('DAI', 'DAI');
+  const weth = await WrappedTokenMock.deploy('WETH', 'WETH');
+
+  await Promise.all([
+    usdc.waitForDeployment(),
+    dai.waitForDeployment(),
+    weth.waitForDeployment(),
+  ]);
+
+  // Gas Station configuration
+  const takerFeeBps = 100; // 1%
+  const gasStipend = 150000; // 150k gas
+
+  // Deploy mock 1inch Aggregation Router
+  const MockAggregationRouter = await ethers.getContractFactory(
+    'MockAggregationRouter'
+  );
+  const mockAggregationRouter = await MockAggregationRouter.deploy();
+  await mockAggregationRouter.waitForDeployment();
+
+  // Deploy Gas Station
+  const GasStation = await ethers.getContractFactory('GasStation');
+  const gasStation = await GasStation.deploy(
+    takerFeeBps,
+    gasStipend,
+    await mockAggregationRouter.getAddress(),
+    await weth.getAddress(),
+    await mockAavePool.getAddress(),
+    await flashLoanAdapter.getAddress()
+  );
+  await gasStation.waitForDeployment();
+
+  return {
+    gasStation,
+    flashLoanAdapter,
+    mockAavePool,
+    mockAggregationRouter,
+    tokens: {
+      usdc: await wrapToken(usdc),
+      dai: await wrapToken(dai),
+      weth: await wrapWrapperToken(weth),
+    },
+    config: {
+      takerFeeBps,
+      gasStipend,
+      mockAggregationRouter: await mockAggregationRouter.getAddress(),
+    },
+  };
+}
+
+async function deployGasStationIntegration() {
+  // Deploy full integration setup with LimitOrderProtocol
+  const swapTokensFixture = await deploySwapTokens();
+  const gasStationFixture = await deployGasStationWithMocks();
+
+  return {
+    ...swapTokensFixture,
+    ...gasStationFixture,
+  };
+}
+
 module.exports = {
   deploySwapTokens,
   deploySeriesEpochManager,
   deployArbitraryPredicate,
+  deployGasStationWithMocks,
+  deployGasStationIntegration,
 };

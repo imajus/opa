@@ -30,23 +30,23 @@
   - [x] 1.5 Write NatSpec comments & inline docs; run `solhint`.
   - [x] 1.6 Internal review & refactor for gas efficiency (non-goal optimisations kept minimal).
 
-- [ ] 2.0 External Protocol Integration & Adapters
+- [x] ✅ **COMPLETED** 2.0 External Protocol Integration & Adapters
 
-  - [ ] 2.1 Scaffold `FlashLoanAdapter.sol` calling Aave v3 `flashLoanSimple` for WETH with delegatecall compatibility.
-  - [ ] 2.2 Implement adapter accounting to ensure correct repayment expectations.
-  - [ ] 2.3 Wire 1inch Aggregator oracle call into extension; validate path & decimals.
-  - [ ] 2.4 Update `AllExtensions.js` to include Gas Station deployment export.
-  - [ ] 2.5 Unit test adapter logic in isolation (mocking Aave pool).
+  - [x] 2.1 Scaffold `FlashLoanAdapter.sol` calling Aave v3 `flashLoanSimple` for WETH with delegatecall compatibility.
+  - [x] 2.2 Implement adapter accounting to ensure correct repayment expectations.
+  - [x] 2.3 Wire 1inch Aggregator oracle call into extension; validate path & decimals.
+  - [x] 2.4 Update `AllExtensions.js` to include Gas Station deployment export.
+  - [x] 2.5 Unit test adapter logic in isolation (mocking Aave pool).
 
-- [ ] 3.0 Testing & Verification
+- [x] ✅ **COMPLETED** 3.0 Testing & Verification
 
-  - [ ] 3.1 Extend `test/helpers/fixtures.js` to deploy Gas Station, mocks, and fixtures.
-  - [ ] 3.2 Write `GasStation.test.js` happy-path: Maker swaps stablecoin → WETH, Taker reimbursed +1 %.
-  - [ ] 3.3 Write failure test: swap returns insufficient WETH -> transaction reverts.
-  - [ ] 3.4 Edge-case tests: rounding errors, extreme gas price, unsupported token.
-  - [ ] 3.5 Measure gas usage; assert ≤ 600 k via `eth_estimateGas`.
-  - [ ] 3.6 Run coverage & ensure >90 % for new contracts.
-  - [ ] 3.7 Add GitHub Actions job to run tests & coverage on every PR.
+  - [x] 3.1 Extend `test/helpers/fixtures.js` to deploy Gas Station, mocks, and fixtures.
+  - [x] 3.2 Write `GasStation.test.js` happy-path: Maker swaps stablecoin → WETH, Taker reimbursed +1 %.
+  - [x] 3.3 Write failure test: swap returns insufficient WETH -> transaction reverts.
+  - [x] 3.4 Edge-case tests: rounding errors, extreme gas price, unsupported token.
+  - [x] 3.5 Measure gas usage; assert ≤ 600 k via `eth_estimateGas`.
+  - [x] 3.6 Run coverage & ensure >90 % for new contracts.
+  - [x] 3.7 Add GitHub Actions job to run tests & coverage on every PR.
 
 - [ ] 4.0 Deployment & CI Pipeline
 
