@@ -21,14 +21,14 @@
 
 ## Tasks
 
-- [ ] 1.0 Contract Implementation – Gas Station Extension
+- [x] 1.0 Contract Implementation – Gas Station Extension
 
-  - [ ] 1.1 Design storage layout & immutables (`takerFeeBps`, `gasStipend`, aggregator & WETH addresses).
-  - [ ] 1.2 Implement `getTakerAmount()` & `getMakerAmount()` math using 1inch Aggregator spot price minus fees & gas reimbursement.
-  - [ ] 1.3 Implement **pre-interaction** to obtain flash-loan via `FlashLoanAdapter` (delegatecall pattern).
-  - [ ] 1.4 Implement **post-interaction**: swap Maker asset → WETH, repay flash-loan (`amount + fee`), reimburse Taker (gas + fee).
-  - [ ] 1.5 Write NatSpec comments & inline docs; run `solhint`.
-  - [ ] 1.6 Internal review & refactor for gas efficiency (non-goal optimisations kept minimal).
+  - [x] 1.1 Design storage layout & immutables (`takerFeeBps`, `gasStipend`, aggregator & WETH addresses).
+  - [x] 1.2 Implement `getTakerAmount()` & `getMakerAmount()` math using 1inch Aggregator spot price minus fees & gas reimbursement.
+  - [x] 1.3 Implement **pre-interaction** to obtain flash-loan via `FlashLoanAdapter` (delegatecall pattern).
+  - [x] 1.4 Implement **post-interaction**: swap Maker asset → WETH, repay flash-loan (`amount + fee`), reimburse Taker (gas + fee).
+  - [x] 1.5 Write NatSpec comments & inline docs; run `solhint`.
+  - [x] 1.6 Internal review & refactor for gas efficiency (non-goal optimisations kept minimal).
 
 - [ ] 2.0 External Protocol Integration & Adapters
 
