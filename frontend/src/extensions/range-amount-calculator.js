@@ -95,6 +95,3 @@ const rangeAmountCalculatorWrapper = createWrapper({
 });
 
 export default rangeAmountCalculatorWrapper;
-
-// Export schemas for external validation reuse
-export { RangeAmountConfigSchema };

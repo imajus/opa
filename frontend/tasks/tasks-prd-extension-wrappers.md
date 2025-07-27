@@ -47,8 +47,8 @@ Work only in the `frontend` folder:
   - [x] 3.5 Re-export new wrappers in `src/index.js`.
   - [x] 3.6 Ensure schema objects are exported for external validation reuse.
 
-- [ ] 4.0 Unit testing & coverage
-  - [ ] 4.1 Write success-path tests asserting `build()` returns a valid SDK `Extension` instance for each wrapper.
+- [x] 4.0 Unit testing & coverage
+  - [x] 4.1 Write success-path tests asserting `build()` returns a valid SDK `Extension` instance for each wrapper.
 
 - [ ] 5.0 Documentation & packaging
   - [ ] 5.1 Draft `docs/Extensions.md` with quick-start example
