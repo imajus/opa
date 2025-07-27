@@ -1,11 +1,6 @@
 const { buildModule } = require('@nomicfoundation/hardhat-ignition/modules');
 
-module.exports = buildModule('AllExtensionsModule', (m) => {
-  // Deploy all three official 1inch extension calculators
-  const chainlinkCalculator = m.contract('ChainlinkCalculator');
-  const dutchAuctionCalculator = m.contract('DutchAuctionCalculator');
-  const rangeAmountCalculator = m.contract('RangeAmountCalculator');
-
+module.exports = buildModule('GasStationModule', (m) => {
   // Configuration parameters for Gas Station
   const takerFeeBps = m.getParameter('takerFeeBps', 100); // 1% taker fee (100 basis points)
   const gasStipend = m.getParameter('gasStipend', 150000); // 150k gas stipend
@@ -24,10 +19,10 @@ module.exports = buildModule('AllExtensionsModule', (m) => {
     '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2'
   ); // Aave v3 Pool on mainnet
 
-  // Deploy FlashLoanAdapter
+  // Deploy FlashLoanAdapter first
   const flashLoanAdapter = m.contract('FlashLoanAdapter');
 
-  // Deploy Gas Station extension
+  // Deploy Gas Station extension with all required parameters
   const gasStation = m.contract('GasStation', [
     takerFeeBps,
     gasStipend,
@@ -38,9 +33,6 @@ module.exports = buildModule('AllExtensionsModule', (m) => {
   ]);
 
   return {
-    chainlinkCalculator,
-    dutchAuctionCalculator,
-    rangeAmountCalculator,
     gasStation,
     flashLoanAdapter,
   };

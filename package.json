@@ -3,8 +3,7 @@
   "scripts": {
     "start": "npx hardhat node",
     "test": "hardhat test --bail",
-    "deploy": "hardhat ignition deploy ignition/modules/Lock.js",
-    "deploy:extensions": "hardhat ignition deploy ignition/modules/AllExtensions.js",
+    "deploy": "hardhat ignition deploy ignition/modules/AllExtensions.js",
     "compile": "hardhat compile",
     "node": "hardhat node"
   },
