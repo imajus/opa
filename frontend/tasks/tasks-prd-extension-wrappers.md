@@ -1,32 +1,35 @@
 ## Relevant Files
 
-- `package.json` - Project manifest containing dependencies, scripts, and ESM module type.
-- `.eslintrc.json` - ESLint configuration for code quality and style enforcement.
-- `jsconfig.json` - VSCode JavaScript language server configuration
-- `src/schemas/common.js` - Reusable Zod primitives (e.g., `address`, `uint256`).
-- `src/constants.js` - Constants/enums e.g. for LOP hooks (`makerAmount`, `takerAmount`, etc.).
-- `src/extensions/utils/factory.js` - Utility to standardise wrapper creation (meta, schemas, build helper).
-- `src/extensions/gas-station.js` - Gas Station extension wrapper definition.
-- `src/extensions/chainlink-calculator.js` - Chainlink Calculator extension wrapper definition.
-- `src/extensions/dutch-auction-calculator.js` - Dutch Auction Calculator extension wrapper definition.
-- `src/extensions/range-amount-calculator.js` - Range Amount Calculator extension wrapper definition.
-- `test/extensions/utils/factory.test.js` - Unit tests for utility functions.
-- `test/extensions/gas-station.test.js` - Unit tests for Gas Station wrapper.
-- `test/extensions/chainlink-calculator.test.js` - Unit tests for Chainlink Calculator wrapper.
-- `test/extensions/dutch-auction-calculator.test.js` - Unit tests for Dutch Auction Calculator wrapper.
-- `test/extensions/range-amount-calculator.test.js` - Unit tests for Range Amount Calculator wrapper.
-- `docs/extensions.md` - Usage guide, examples, and contribution notes.
+Work only in the `frontend` folder:
+
+- `frontend/package.json` - Project manifest containing dependencies, scripts, and ESM module type.
+- `frontend/.eslintrc.json` - ESLint configuration for code quality and style enforcement.
+- `frontend/jsconfig.json` - VSCode JavaScript language server configuration
+- `frontend/test/placeholder.test.js` - Placeholder test file for project scaffolding validation.
+- `frontend/src/schemas/common.js` - Reusable Zod primitives (e.g., `address`, `uint256`).
+- `frontend/src/constants.js` - Constants/enums e.g. for LOP hooks (`makerAmount`, `takerAmount`, etc.).
+- `frontend/src/extensions/utils/factory.js` - Utility to standardise wrapper creation (meta, schemas, build helper).
+- `frontend/src/extensions/gas-station.js` - Gas Station extension wrapper definition.
+- `frontend/src/extensions/chainlink-calculator.js` - Chainlink Calculator extension wrapper definition.
+- `frontend/src/extensions/dutch-auction-calculator.js` - Dutch Auction Calculator extension wrapper definition.
+- `frontend/src/extensions/range-amount-calculator.js` - Range Amount Calculator extension wrapper definition.
+- `frontend/test/extensions/utils/factory.test.js` - Unit tests for utility functions.
+- `frontend/test/extensions/gas-station.test.js` - Unit tests for Gas Station wrapper.
+- `frontend/test/extensions/chainlink-calculator.test.js` - Unit tests for Chainlink Calculator wrapper.
+- `frontend/test/extensions/dutch-auction-calculator.test.js` - Unit tests for Dutch Auction Calculator wrapper.
+- `frontend/test/extensions/range-amount-calculator.test.js` - Unit tests for Range Amount Calculator wrapper.
+- `frontend/docs/extensions.md` - Usage guide, examples, and contribution notes.
 
 ## Tasks
 
-- [ ] 1.0 Project scaffolding & tooling setup
-  - [ ] 1.1 Add `package.json` with `"type": "module"`; add deps `zod`, `@1inch/limit-order-sdk`; devDeps `mocha`, `chai`, `eslint`.
-  - [ ] 1.2 Configure `.eslintrc.json` with preferred rules and no-empty-line style inside functions.
-  - [ ] 1.3 Configure `jsconfig.json` with appropriate defaults
-  - [ ] 1.4 Add npm scripts: `test`, `coverage`, `lint`, `docs`.
-  - [ ] 1.4 Create base directories: `src/`, `src/extensions/`, `src/schemas/`, `test/`.
-  - [ ] 1.5 Install dependencies via `npm install`.
-  - [ ] **[Human]** 1.6 Approve package name and publishing scope (public vs private).
+- [x] 1.0 Project scaffolding & tooling setup
+  - [x] 1.1 Add `package.json` with `"type": "module"`; add deps `zod`, `@1inch/limit-order-sdk`; devDeps `mocha`, `chai`, `eslint`.
+  - [x] 1.2 Configure `.eslintrc.json` with preferred rules and no-empty-line style inside functions.
+  - [x] 1.3 Configure `jsconfig.json` with appropriate defaults
+  - [x] 1.4 Add npm scripts: `test`, `coverage`, `lint`, `docs`.
+  - [x] 1.5 Create base directories: `src/`, `src/extensions/`, `src/schemas/`, `test/`.
+  - [x] 1.6 Install dependencies via `npm install`.
+  - [x] **[Human]** 1.7 Approve package name and publishing scope (public vs private).
 
 - [ ] 2.0 Core wrapper interface & utilities
   - [ ] 2.1 Implement `src/extensions/utils/factory.js` exporting `createWrapper({ name, description, hooks, build }): ExtensionWrapper`.
