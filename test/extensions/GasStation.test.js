@@ -2,60 +2,28 @@ const { ethers } = require('hardhat');
 const { expect } = require('chai');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deployGasStationIntegration } = require('../helpers/fixtures');
-const { buildOrder, buildTakerTraits } = require('../helpers/order');
-const { ether, units } = require('../helpers/utils');
+const { buildOrder } = require('../helpers/order');
+const { ether } = require('../helpers/utils');
+
+const DEFAULT_ORDER_AMOUNT = ether('100');
+const DEFAULT_WETH_AMOUNT = ether('100');
+
+async function deployGasStationFixture() {
+  const [, maker, taker] = await ethers.getSigners();
+  const fixture = await deployGasStationIntegration();
+  return {
+    ...fixture,
+    maker,
+    taker,
+  };
+}
 
 describe('GasStation', function () {
-  let gasStation;
-  let swap;
-  let flashLoanAdapter;
-  let mockAavePool;
-  let mockAggregationRouter;
-  let tokens;
-  let config;
-  let deployer, maker, taker;
-
-  const DEFAULT_ORDER_AMOUNT = ether('100');
-  const DEFAULT_WETH_AMOUNT = ether('100');
-
-  async function deployGasStationFixture() {
-    [deployer, maker, taker] = await ethers.getSigners();
-
-    const fixture = await deployGasStationIntegration();
-
-    // Mint tokens for testing
-    await fixture.tokens.dai.mint(maker.address, '1000');
-    await fixture.tokens.usdc.mint(maker.address, '1000');
-    // For WETH, use the contract directly since it's a wrapper token
-    await fixture.tokens.weth.contract
-      .connect(taker)
-      .deposit({ value: ether('1000') });
-
-    return {
-      ...fixture,
-      deployer,
-      maker,
-      taker,
-    };
-  }
-
-  beforeEach(async function () {
-    ({
-      gasStation,
-      swap,
-      flashLoanAdapter,
-      mockAavePool,
-      mockAggregationRouter,
-      tokens,
-      config,
-      deployer,
-      maker,
-      taker,
-    } = await loadFixture(deployGasStationFixture));
-  });
-
   describe('Deployment', function () {
     it('should deploy with correct configuration', async function () {
+      const { gasStation, flashLoanAdapter, mockAavePool, tokens, config } =
+        await loadFixture(deployGasStationFixture);
+
       expect(await gasStation.takerFeeBps()).to.equal(config.takerFeeBps);
       expect(await gasStation.gasStipend()).to.equal(config.gasStipend);
       expect(await gasStation.weth()).to.equal(tokens.weth.address);
@@ -68,6 +36,8 @@ describe('GasStation', function () {
     });
 
     it('should revert with invalid constructor parameters', async function () {
+      const { flashLoanAdapter, mockAavePool, tokens, config } =
+        await loadFixture(deployGasStationFixture);
       const GasStation = await ethers.getContractFactory('GasStation');
 
       // Test invalid taker fee (> 100%)
@@ -98,6 +68,10 @@ describe('GasStation', function () {
 
   describe('Dynamic Pricing', function () {
     it('should calculate taking amount with costs included', async function () {
+      const { gasStation, tokens, maker, taker } = await loadFixture(
+        deployGasStationFixture
+      );
+
       const order = buildOrder({
         maker: maker.address,
         makerAsset: tokens.dai.address,
@@ -121,6 +95,10 @@ describe('GasStation', function () {
     });
 
     it('should calculate making amount with costs deducted', async function () {
+      const { gasStation, tokens, maker, taker } = await loadFixture(
+        deployGasStationFixture
+      );
+
       const order = buildOrder({
         maker: maker.address,
         makerAsset: tokens.dai.address,
@@ -144,6 +122,10 @@ describe('GasStation', function () {
     });
 
     it('should only accept WETH as taker asset', async function () {
+      const { gasStation, tokens, maker, taker } = await loadFixture(
+        deployGasStationFixture
+      );
+
       const orderWithDai = buildOrder({
         maker: maker.address,
         makerAsset: tokens.dai.address,
@@ -166,6 +148,10 @@ describe('GasStation', function () {
     });
 
     it('should revert with zero amounts', async function () {
+      const { gasStation, tokens, maker, taker } = await loadFixture(
+        deployGasStationFixture
+      );
+
       const order = buildOrder({
         maker: maker.address,
         makerAsset: tokens.dai.address,
@@ -190,6 +176,7 @@ describe('GasStation', function () {
 
   describe('Cost Calculations', function () {
     it('should calculate total costs correctly', async function () {
+      const { config } = await loadFixture(deployGasStationFixture);
       const gasPrice = ethers.parseUnits('20', 'gwei');
       const flashLoanAmount = ether('100');
 
@@ -211,6 +198,9 @@ describe('GasStation', function () {
 
   describe('Flash Loan Integration', function () {
     it('should have correct flash loan adapter configuration', async function () {
+      const { gasStation, flashLoanAdapter } = await loadFixture(
+        deployGasStationFixture
+      );
       const adapterAddress = await gasStation.flashLoanAdapter();
       expect(adapterAddress).to.equal(await flashLoanAdapter.getAddress());
 
@@ -222,6 +212,8 @@ describe('GasStation', function () {
     });
 
     it('should validate flash loan parameters', async function () {
+      const { gasStation, flashLoanAdapter, mockAavePool, tokens } =
+        await loadFixture(deployGasStationFixture);
       const isValid = await flashLoanAdapter.validateFlashLoanParams(
         await mockAavePool.getAddress(),
         tokens.weth.address,
@@ -234,6 +226,10 @@ describe('GasStation', function () {
 
   describe('Edge Cases', function () {
     it('should handle extreme gas prices', async function () {
+      const { gasStation, tokens, maker, taker } = await loadFixture(
+        deployGasStationFixture
+      );
+
       // Simulate very high gas price
       const order = buildOrder({
         maker: maker.address,
@@ -258,6 +254,9 @@ describe('GasStation', function () {
     });
 
     it('should handle rounding for small amounts', async function () {
+      const { gasStation, tokens, maker, taker } = await loadFixture(
+        deployGasStationFixture
+      );
       const smallAmount = 1000n; // 1000 wei
 
       const order = buildOrder({
@@ -285,6 +284,8 @@ describe('GasStation', function () {
 
   describe('Error Conditions', function () {
     it('should revert when insufficient output amount', async function () {
+      const { tokens, maker } = await loadFixture(deployGasStationFixture);
+
       const order = buildOrder({
         maker: maker.address,
         makerAsset: tokens.dai.address,
@@ -300,6 +301,9 @@ describe('GasStation', function () {
     });
 
     it('should revert when swap returns insufficient WETH', async function () {
+      const { gasStation, mockAggregationRouter, tokens, maker, taker } =
+        await loadFixture(deployGasStationFixture);
+
       // Make aggregator fail to force fallback to 1:1, then use very high gas price
       await mockAggregationRouter.setShouldFailQuotes(true);
 
@@ -330,6 +334,9 @@ describe('GasStation', function () {
     });
 
     it('should handle aggregator failure gracefully', async function () {
+      const { gasStation, mockAggregationRouter, tokens, maker, taker } =
+        await loadFixture(deployGasStationFixture);
+
       // Make the mock aggregator fail
       await mockAggregationRouter.setShouldFailQuotes(true);
 
@@ -359,6 +366,10 @@ describe('GasStation', function () {
     });
 
     it('should revert when flash loan fails', async function () {
+      const { mockAavePool, tokens, maker } = await loadFixture(
+        deployGasStationFixture
+      );
+
       // Make the mock Aave pool fail
       await mockAavePool.setShouldFail(true);
 
@@ -382,6 +393,10 @@ describe('GasStation', function () {
 
   describe('Edge Cases - Extended', function () {
     it('should handle unsupported tokens gracefully', async function () {
+      const { gasStation, tokens, maker, taker } = await loadFixture(
+        deployGasStationFixture
+      );
+
       // Create a custom token that doesn't have proper pricing
       const UnsupportedToken = await ethers.getContractFactory('TokenMock');
       const unsupportedToken = await UnsupportedToken.deploy('UNSUP', 'UNSUP');
@@ -410,6 +425,9 @@ describe('GasStation', function () {
     });
 
     it('should handle precision loss with very small amounts', async function () {
+      const { gasStation, tokens, maker, taker } = await loadFixture(
+        deployGasStationFixture
+      );
       const verySmallAmount = 100n; // 100 wei
 
       const order = buildOrder({
@@ -436,6 +454,10 @@ describe('GasStation', function () {
     });
 
     it('should handle maximum uint256 amounts without overflow', async function () {
+      const { gasStation, tokens, maker, taker } = await loadFixture(
+        deployGasStationFixture
+      );
+
       // Test with very large numbers (but not max uint256 to avoid overflow in costs)
       const largeAmount = ethers.parseEther('1000000'); // 1M ETH
 
@@ -462,6 +484,10 @@ describe('GasStation', function () {
     });
 
     it('should handle extreme gas prices correctly', async function () {
+      const { gasStation, tokens, maker, taker } = await loadFixture(
+        deployGasStationFixture
+      );
+
       // Test with different gas prices by varying the gas stipend effect
       const order = buildOrder({
         maker: maker.address,
@@ -487,9 +513,20 @@ describe('GasStation', function () {
     });
 
     it('should handle zero decimal tokens', async function () {
+      const { gasStation, tokens, maker, taker } = await loadFixture(
+        deployGasStationFixture
+      );
+
       // Create a token with 0 decimals
-      const ZeroDecimalToken = await ethers.getContractFactory('TokenCustomDecimalsMock');
-      const zeroDecimalToken = await ZeroDecimalToken.deploy('ZERO', 'ZERO', '0', 0);
+      const ZeroDecimalToken = await ethers.getContractFactory(
+        'TokenCustomDecimalsMock'
+      );
+      const zeroDecimalToken = await ZeroDecimalToken.deploy(
+        'ZERO',
+        'ZERO',
+        '0',
+        0
+      );
       await zeroDecimalToken.waitForDeployment();
 
       const order = buildOrder({
@@ -516,6 +553,10 @@ describe('GasStation', function () {
     });
 
     it('should handle when maker asset equals WETH', async function () {
+      const { gasStation, tokens, maker, taker } = await loadFixture(
+        deployGasStationFixture
+      );
+
       const order = buildOrder({
         maker: maker.address,
         makerAsset: tokens.weth.address,
@@ -539,6 +580,9 @@ describe('GasStation', function () {
     });
 
     it('should maintain precision with different exchange rates', async function () {
+      const { gasStation, mockAggregationRouter, tokens, maker, taker } =
+        await loadFixture(deployGasStationFixture);
+
       // Test with various exchange rates
       const exchangeRates = [10000, 15000, 20000]; // 1x, 1.5x, 2x
 
@@ -567,8 +611,12 @@ describe('GasStation', function () {
         // The function calculates total costs and adds them, so result varies by rate
         expect(takingAmount).to.be.gt(0);
         expect(Number.isFinite(Number(takingAmount))).to.be.true;
-        
-        console.log(`Rate: ${rate/100}%, Taking amount: ${ethers.formatEther(takingAmount)} ETH`);
+
+        console.log(
+          `Rate: ${rate / 100}%, Taking amount: ${ethers.formatEther(
+            takingAmount
+          )} ETH`
+        );
       }
 
       // Reset to default
@@ -578,6 +626,10 @@ describe('GasStation', function () {
 
   describe('Gas Usage Analysis', function () {
     it('should measure gas usage for typical order operations', async function () {
+      const { gasStation, tokens, maker, taker } = await loadFixture(
+        deployGasStationFixture
+      );
+
       const order = buildOrder({
         maker: maker.address,
         makerAsset: tokens.dai.address,
@@ -617,12 +669,14 @@ describe('GasStation', function () {
     });
 
     it('should estimate flash loan adapter gas usage', async function () {
+      const { flashLoanAdapter } = await loadFixture(deployGasStationFixture);
       const amount = ether('100');
-      
+
       // Test gas for fee calculations
       const feeGas = await flashLoanAdapter.getFlashLoanFee.estimateGas(amount);
-      const repaymentGas = await flashLoanAdapter.calculateTotalRepayment.estimateGas(amount);
-      
+      const repaymentGas =
+        await flashLoanAdapter.calculateTotalRepayment.estimateGas(amount);
+
       expect(feeGas).to.be.lt(50000n); // Should be very low for pure functions
       expect(repaymentGas).to.be.lt(50000n);
 
@@ -634,16 +688,16 @@ describe('GasStation', function () {
       // This is a conceptual test since we can't test the full flash loan flow
       // In a real scenario, the total gas would include:
       // 1. preInteraction (flash loan initiation): ~150k gas
-      // 2. Flash loan callback execution: ~200k gas  
+      // 2. Flash loan callback execution: ~200k gas
       // 3. 1inch swap execution: ~150k gas
       // 4. postInteraction (repayment & cleanup): ~100k gas
       // Total: ~600k gas (meeting the requirement)
 
-      const conceptualGasUsage = 
+      const conceptualGasUsage =
         150000n + // preInteraction
         200000n + // executeOperation callback
         150000n + // 1inch swap
-        100000n;  // postInteraction
+        100000n; // postInteraction
 
       expect(conceptualGasUsage).to.be.lte(600000n); // Within 600k limit
       console.log(`Estimated total gas usage: ${conceptualGasUsage}`);

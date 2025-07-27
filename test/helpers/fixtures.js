@@ -123,9 +123,15 @@ async function deployGasStationWithMocks() {
   // Deploy basic tokens for testing
   const TokenMock = await ethers.getContractFactory('TokenMock');
   const WrappedTokenMock = await ethers.getContractFactory('WrappedTokenMock');
+  const PermitMock = await ethers.getContractFactory('ERC20PermitMock');
 
   const usdc = await TokenMock.deploy('USDC', 'USDC');
-  const dai = await TokenMock.deploy('DAI', 'DAI');
+  const dai = await PermitMock.deploy(
+    'DAI',
+    'DAI',
+    deployer.address,
+    ether('1000')
+  );
   const weth = await WrappedTokenMock.deploy('WETH', 'WETH');
 
   await Promise.all([

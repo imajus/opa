@@ -30,7 +30,7 @@
   - [x] 1.5 Write NatSpec comments & inline docs; run `solhint`.
   - [x] 1.6 Internal review & refactor for gas efficiency (non-goal optimisations kept minimal).
 
-- [x] ✅ **COMPLETED** 2.0 External Protocol Integration & Adapters
+- [x] 2.0 External Protocol Integration & Adapters
 
   - [x] 2.1 Scaffold `FlashLoanAdapter.sol` calling Aave v3 `flashLoanSimple` for WETH with delegatecall compatibility.
   - [x] 2.2 Implement adapter accounting to ensure correct repayment expectations.
@@ -38,7 +38,7 @@
   - [x] 2.4 Update `AllExtensions.js` to include Gas Station deployment export.
   - [x] 2.5 Unit test adapter logic in isolation (mocking Aave pool).
 
-- [x] ✅ **COMPLETED** 3.0 Testing & Verification
+- [x] 3.0 Testing & Verification
 
   - [x] 3.1 Extend `test/helpers/fixtures.js` to deploy Gas Station, mocks, and fixtures.
   - [x] 3.2 Write `GasStation.test.js` happy-path: Maker swaps stablecoin → WETH, Taker reimbursed +1 %.
