@@ -56,16 +56,10 @@ const gasStationWrapper = createWrapper({
       '0x00' // Empty data - Gas Station uses view functions for calculation
     );
     // Set pre-interaction (flash loan initiation)
-    const preInteraction = new Interaction({
-      target,
-      data: '0x00', // Gas Station will handle the flash loan logic internally
-    });
+    const preInteraction = new Interaction(target, '0x00');
     builder.withPreInteraction(preInteraction);
     // Set post-interaction (swap and repayment)
-    const postInteraction = new Interaction({
-      target,
-      data: '0x00', // Gas Station will handle the swap and repayment logic internally
-    });
+    const postInteraction = new Interaction(target, '0x00');
     builder.withPostInteraction(postInteraction);
     // Build and return the Extension
     return builder.build();
