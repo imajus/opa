@@ -1,0 +1,13 @@
+{
+  "name": "opa",
+  "version": "1.0.0",
+  "keywords": [],
+  "author": "Denis Perov <denis.perov@gmail.com>",
+  "license": "ISC",
+  "description": "Order Protocol Assistant",
+  "workspaces": [
+    "./backend",
+    "./frontend",
+    "./builder"
+  ]
+}
