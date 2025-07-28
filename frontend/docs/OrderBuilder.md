@@ -35,10 +35,11 @@ builder
 
 // Sign the order
 const wallet = new Wallet(privateKey, provider);
-const result = await builder.build(wallet, 1); // Ethereum mainnet
+const result = await builder.build(wallet); // Ethereum mainnet (chainId from config)
 
 console.log('Order hash:', result.orderHash);
 console.log('Signature:', result.signature);
+console.log('Extension:', result.extension);
 ```
 
 ## Installation
@@ -92,15 +93,15 @@ traits.withoutPartialFills();
 import { Wallet } from 'ethers';
 
 const wallet = new Wallet(privateKey, provider);
-const chainId = 1; // Ethereum mainnet
 
 try {
-  const result = await builder.build(wallet, chainId);
+  const result = await builder.build(wallet); // chainId from config
 
   // Use the signed order
   console.log('Order struct:', result.order);
   console.log('Order hash:', result.orderHash);
   console.log('Signature:', result.signature);
+  console.log('Extension:', result.extension);
 
   // Submit to 1inch backend or contract
   await submitOrder(result);
@@ -135,7 +136,7 @@ const builder = new OrderBuilder(
 // Add Chainlink price calculator
 builder.addExtension(chainlinkCalculator);
 
-const result = await builder.build(signer, chainId);
+const result = await builder.build(signer); // chainId from config
 ```
 
 ### Adding Multiple Extensions (Non-Conflicting)
@@ -147,7 +148,7 @@ try {
   builder.addExtension(extB); // uses makerAmount + takerAmount
   builder.addExtension(extC); // uses postInteraction
 
-  const signedOrder = await builder.build(signer, chainId);
+  const signedOrder = await builder.build(signer); // chainId from config
 } catch (error) {
   if (error instanceof HookCollisionError) {
     console.error('Extension conflict:', error.message);
@@ -182,7 +183,7 @@ const params = {
 };
 
 builder.addExtension(chainlinkCalculator);
-const result = await builder.build(signer, chainId);
+const result = await builder.build(signer, params); // Pass params to extensions
 ```
 
 #### Dutch Auction
@@ -203,6 +204,15 @@ const params = {
 };
 
 builder.addExtension(dutchAuctionCalculator);
+const result = await builder.build(signer, params); // Pass params to extensions
+
+// Access the extension data used in the order
+console.log('Extension data:', {
+  makingAmountData: result.extension.makingAmountData,
+  takingAmountData: result.extension.takingAmountData,
+  preInteraction: result.extension.preInteraction,
+  postInteraction: result.extension.postInteraction,
+});
 ```
 
 ## API Reference
@@ -247,14 +257,14 @@ Adds an extension wrapper with automatic collision detection.
 builder.addExtension(chainlinkCalculator);
 ```
 
-##### `build(signer: Signer, chainId: number): Promise<OrderResult>`
+##### `build(signer: Signer, params?: object): Promise<OrderResult>`
 
-Builds, hashes, and signs the complete order.
+Builds, hashes, and signs the complete order. The chainId is automatically taken from the config file. The optional `params` object is passed to all extension `build()` calls for extension configuration.
 
 **Parameters:**
 
 - `signer`: Ethers.js signer (EOA only)
-- `chainId`: EIP-155 chain ID
+- `params` (object, optional): Parameters to pass to extension build functions
 
 **Returns:** Promise resolving to:
 
@@ -262,8 +272,36 @@ Builds, hashes, and signs the complete order.
 {
   order: Object,      // Built LimitOrder struct
   orderHash: string,  // EIP-712 hash
-  signature: string   // EIP-712 signature
+  signature: string,  // EIP-712 signature
+  extension: Object   // Combined extension instance used in the order
 }
+```
+
+The `extension` field contains the combined Extension instance that was used to build the order. This includes all the hook data from any extensions that were added to the builder. If no extensions were added, this will be an empty Extension instance.
+
+###### Extension Params
+
+The `params` object is used to configure extensions. Each extension's `build()` function receives the full `params` object. The structure of `params` depends on the extensions you use. For example:
+
+```javascript
+const params = {
+  makerAmount: {
+    type: 'single',
+    config: {
+      /* ... */
+    },
+  },
+  takerAmount: {
+    /* ... */
+  },
+  preInteraction: {
+    /* ... */
+  },
+  postInteraction: {
+    /* ... */
+  },
+};
+const result = await builder.build(signer, params);
 ```
 
 ### Error Classes
@@ -289,7 +327,7 @@ try {
 
 ```javascript
 try {
-  const result = await builder.build(signer, chainId);
+  const result = await builder.build(signer); // chainId from config
 } catch (error) {
   if (error instanceof HookCollisionError) {
     // Extension hook collision
@@ -404,7 +442,7 @@ async function createBasicSwap() {
     .allowPartialFills();
 
   const wallet = new Wallet(process.env.PRIVATE_KEY, provider);
-  return await builder.build(wallet, 1);
+  return await builder.build(wallet); // chainId from config
 }
 ```
 
@@ -436,7 +474,7 @@ async function createDutchAuction() {
   };
 
   builder.addExtension(dutchAuctionCalculator);
-  return await builder.build(signer, 1);
+  return await builder.build(signer, params); // Pass params to extensions
 }
 ```
 
@@ -473,7 +511,7 @@ async function createOracleOrder() {
     .withExpiration(Math.floor(Date.now() / 1000) + 1800) // 30 min
     .allowPartialFills();
 
-  return await builder.build(signer, 1);
+  return await builder.build(signer, params); // Pass params to extensions
 }
 ```
 
@@ -506,7 +544,7 @@ async function createAdvancedOrder() {
       .allowPartialFills()
       .allowMultipleFills();
 
-    return await builder.build(signer, 1);
+    return await builder.build(signer); // chainId from config
   } catch (error) {
     if (error instanceof HookCollisionError) {
       console.error('Extension conflict:', error.message);

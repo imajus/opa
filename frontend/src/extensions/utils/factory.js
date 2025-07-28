@@ -1,29 +1,6 @@
 import { z } from 'zod';
 
 /**
- * @typedef {Object} ExtensionMeta
- * @property {string} name - Extension name
- * @property {string} description - Extension description
- * @property {string} version - Extension version
- */
-
-/**
- * @typedef {Object} ExtensionWrapper
- * @property {ExtensionMeta} meta - Extension metadata
- * @property {Object} schemas - Hook parameter schemas
- * @property {Function} build - Function to build Extension instance
- * @property {Function} validate - Function to validate parameters
- */
-
-/**
- * @typedef {Object} WrapperConfig
- * @property {string} name - Extension name
- * @property {string} description - Extension description
- * @property {Object.<string, import('zod').ZodSchema>} hooks - Hook schemas
- * @property {Function} build - Function to build Extension instance
- */
-
-/**
  * Schema for extension wrapper configuration validation
  * @type {import('zod').ZodSchema<WrapperConfig>}
  */
@@ -41,10 +18,6 @@ const WrapperConfigSchema = z.object({
  * that provides schema validation, parameter building, and metadata for LOP extensions.
  *
  * @param {WrapperConfig} config - Wrapper configuration object
- * @param {string} config.name - Unique identifier for the extension
- * @param {string} config.description - Human-readable description of the extension's purpose
- * @param {Object.<string, import('zod').ZodSchema>} config.hooks - Object mapping hook names to their Zod validation schemas
- * @param {Function} config.build - Function that transforms validated parameters into an Extension instance
  * @returns {ExtensionWrapper} Standardized extension wrapper with validation and build capabilities
  * @throws {import('zod').ZodError} When configuration is invalid
  *
@@ -69,26 +42,16 @@ const WrapperConfigSchema = z.object({
 export function createWrapper(config) {
   const validatedConfig = WrapperConfigSchema.parse(config);
   const { name, description, hooks, build } = validatedConfig;
-
   return {
-    /** @type {ExtensionMeta} Extension metadata */
     meta: {
       name,
       description,
       version: '1.0.0',
     },
-    /** @type {Object.<string, import('zod').ZodSchema>} Hook parameter schemas */
     schemas: hooks,
-    /**
-     * Builds an Extension instance with validated parameters
-     * @param {Object} params - Parameters for each hook
-     * @returns {*} Extension instance created by the configured build function
-     * @throws {import('zod').ZodError} When parameters fail validation
-     */
     build(params) {
       const hookEntries = Object.entries(hooks);
       const validatedParams = {};
-
       for (const [hookName, schema] of hookEntries) {
         if (params[hookName] !== undefined) {
           validatedParams[hookName] = schema.parse(params[hookName]);
@@ -96,15 +59,9 @@ export function createWrapper(config) {
       }
       return build(validatedParams);
     },
-    /**
-     * Validates parameters against hook schemas without building
-     * @param {Object} params - Parameters to validate
-     * @returns {Object|null} Validation errors object or null if valid
-     */
     validate(params) {
       const errors = {};
       const hookEntries = Object.entries(hooks);
-
       for (const [hookName, schema] of hookEntries) {
         if (params[hookName] !== undefined) {
           try {
