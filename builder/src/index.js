@@ -6,10 +6,10 @@
  */
 
 // Extension wrappers
-export { default as gasStation } from './extensions/gas-station.js';
-export { default as chainlinkCalculator } from './extensions/chainlink-calculator.js';
-export { default as dutchAuctionCalculator } from './extensions/dutch-auction-calculator.js';
-export { default as rangeAmountCalculator } from './extensions/range-amount-calculator.js';
+import gasStation from './extensions/gas-station.js';
+import chainlinkCalculator from './extensions/chainlink-calculator.js';
+import dutchAuctionCalculator from './extensions/dutch-auction-calculator.js';
+import rangeAmountCalculator from './extensions/range-amount-calculator.js';
 
 // Utilities
 export { createWrapper } from './extensions/utils/factory.js';

@@ -15,39 +15,84 @@ export const extensionConfigs = {
     hookType: HookType.PRE_INTERACTION,
     category: 'payment',
     parameters: [
-      { name: 'gasToken', type: 'address', required: true, description: 'Token to pay gas fees with' },
-      { name: 'gasPrice', type: 'uint256', required: true, description: 'Gas price in token units' },
+      {
+        name: 'gasToken',
+        type: 'address',
+        required: true,
+        description: 'Token to pay gas fees with',
+      },
+      {
+        name: 'gasPrice',
+        type: 'uint256',
+        required: true,
+        description: 'Gas price in token units',
+      },
     ],
   },
   chainlinkCalculator: {
     name: 'Chainlink Calculator',
     description: 'Dynamic pricing based on Chainlink price feeds',
-    hookType: HookType.INTERACTION,
+    hookType: HookType.MAKER_AMOUNT,
     category: 'pricing',
     parameters: [
-      { name: 'priceFeed', type: 'address', required: true, description: 'Chainlink price feed address' },
-      { name: 'baseAmount', type: 'uint256', required: true, description: 'Base amount for calculation' },
+      {
+        name: 'priceFeed',
+        type: 'address',
+        required: true,
+        description: 'Chainlink price feed address',
+      },
+      {
+        name: 'baseAmount',
+        type: 'uint256',
+        required: true,
+        description: 'Base amount for calculation',
+      },
     ],
   },
   dutchAuctionCalculator: {
     name: 'Dutch Auction Calculator',
     description: 'Time-based decreasing price auction mechanism',
-    hookType: HookType.INTERACTION,
+    hookType: HookType.TAKER_AMOUNT,
     category: 'pricing',
     parameters: [
-      { name: 'startPrice', type: 'uint256', required: true, description: 'Starting auction price' },
-      { name: 'endPrice', type: 'uint256', required: true, description: 'Ending auction price' },
-      { name: 'duration', type: 'uint256', required: true, description: 'Auction duration in seconds' },
+      {
+        name: 'startPrice',
+        type: 'uint256',
+        required: true,
+        description: 'Starting auction price',
+      },
+      {
+        name: 'endPrice',
+        type: 'uint256',
+        required: true,
+        description: 'Ending auction price',
+      },
+      {
+        name: 'duration',
+        type: 'uint256',
+        required: true,
+        description: 'Auction duration in seconds',
+      },
     ],
   },
   rangeAmountCalculator: {
     name: 'Range Amount Calculator',
     description: 'Allows flexible amount ranges for partial fills',
-    hookType: HookType.INTERACTION,
+    hookType: HookType.MAKER_AMOUNT,
     category: 'amount',
     parameters: [
-      { name: 'minAmount', type: 'uint256', required: true, description: 'Minimum fill amount' },
-      { name: 'maxAmount', type: 'uint256', required: true, description: 'Maximum fill amount' },
+      {
+        name: 'minAmount',
+        type: 'uint256',
+        required: true,
+        description: 'Minimum fill amount',
+      },
+      {
+        name: 'maxAmount',
+        type: 'uint256',
+        required: true,
+        description: 'Maximum fill amount',
+      },
     ],
   },
 };
@@ -71,10 +116,10 @@ export function getAvailableExtensions() {
 export function checkExtensionConflicts(selectedExtensions) {
   const conflicts = [];
   const warnings = [];
-  
+
   // Group extensions by category
   const categoryGroups = {};
-  selectedExtensions.forEach(extensionId => {
+  selectedExtensions.forEach((extensionId) => {
     const config = extensionConfigs[extensionId];
     if (config) {
       const category = config.category;
@@ -84,7 +129,7 @@ export function checkExtensionConflicts(selectedExtensions) {
       categoryGroups[category].push(extensionId);
     }
   });
-  
+
   // Check for pricing conflicts (only one pricing extension allowed)
   if (categoryGroups.pricing && categoryGroups.pricing.length > 1) {
     conflicts.push({
@@ -94,10 +139,10 @@ export function checkExtensionConflicts(selectedExtensions) {
       message: 'Only one pricing extension can be selected at a time',
     });
   }
-  
+
   // Check for hook type conflicts
   const hookTypeGroups = {};
-  selectedExtensions.forEach(extensionId => {
+  selectedExtensions.forEach((extensionId) => {
     const config = extensionConfigs[extensionId];
     if (config) {
       const hookType = config.hookType;
@@ -107,7 +152,7 @@ export function checkExtensionConflicts(selectedExtensions) {
       hookTypeGroups[hookType].push(extensionId);
     }
   });
-  
+
   // Warning for multiple extensions of same hook type
   Object.entries(hookTypeGroups).forEach(([hookType, extensionList]) => {
     if (extensionList.length > 1) {
@@ -119,7 +164,7 @@ export function checkExtensionConflicts(selectedExtensions) {
       });
     }
   });
-  
+
   return {
     hasConflicts: conflicts.length > 0,
     conflicts,
@@ -148,14 +193,17 @@ export function validateExtensionParameters(extensionId, parameters) {
   if (!config) {
     return { isValid: false, errors: ['Unknown extension'] };
   }
-  
+
   const errors = [];
-  
-  config.parameters.forEach(param => {
-    if (param.required && (!parameters[param.name] || parameters[param.name] === '')) {
+
+  config.parameters.forEach((param) => {
+    if (
+      param.required &&
+      (!parameters[param.name] || parameters[param.name] === '')
+    ) {
       errors.push(`${param.name} is required`);
     }
-    
+
     // Basic type validation
     if (parameters[param.name]) {
       const value = parameters[param.name];
@@ -167,7 +215,7 @@ export function validateExtensionParameters(extensionId, parameters) {
       }
     }
   });
-  
+
   return {
     isValid: errors.length === 0,
     errors,
@@ -181,12 +229,12 @@ export function validateExtensionParameters(extensionId, parameters) {
  */
 export function createExtensionInstances(extensionConfigs) {
   const instances = {};
-  
+
   extensionConfigs.forEach(({ id, parameters }) => {
     if (extensions[id]) {
       instances[id] = extensions[id](parameters);
     }
   });
-  
+
   return instances;
-} 
+}
