@@ -29,7 +29,7 @@ export default function Home() {
                   Order Protocol Assistant
                 </span>{' '}
                 empowers traders to create sophisticated limit orders using
-                1inch's Limit Order Protocol extensions.
+                1inch&apos;s Limit Order Protocol extensions.
               </p>
               <p className="mb-4">
                 Build custom trading strategies with gas stations, dynamic

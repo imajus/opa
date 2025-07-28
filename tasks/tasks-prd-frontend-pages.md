@@ -36,7 +36,7 @@
   - [x] 1.5 Test builder package import and extension loading in a simple test component
   - [x] 1.6 Create utility modules for order building, extension management, and URL parameter encoding
 
-- [ ] 2.0 **Landing Page Implementation**
+- [x] 2.0 **Landing Page Implementation**
   - [x] 2.1 Create `frontend/app/page.js` with project logo, name "OPA" (extra-large), and multi-sentence description in the middle of the page
   - [x] 2.2 Add primary CTA button "Build a Strategy" linking to `/strategy` page
   - [x] 2.3 Add secondary CTA link to GitHub repository (opens in new tab)
@@ -44,15 +44,15 @@
   - [x] 2.5 Ensure responsive design for mobile (sm) and desktop (lg) breakpoints
   - [x] 2.6 Add `frontend/public/landing-logo.png` logo image on the left from the "OPA" text
 
-- [ ] 3.0 **Strategy Builder Page Implementation**
-  - [ ] 3.1 Create `frontend/app/strategy/page.js` with extension selection interface
-  - [ ] 3.2 Import and list available extensions from `builder` (Gas Station, Chainlink Calculator, Dutch Auction Calculator, Range Amount Calculator)
-  - [ ] 3.3 Implement extension selection with checkbox/toggle interface
-  - [ ] 3.4 Add extension collision detection using builder API to prevent incompatible combinations
-  - [ ] 3.5 Display extension parameters for reference (read-only, no input collection at this stage)
-  - [ ] 3.6 Create submit button that serializes selected extensions to base64 JSON
-  - [ ] 3.7 Implement navigation to `/create?blueprint=...` with encoded extension data
-  - [ ] 3.8 Add error handling for extension conflicts with user-friendly messages
+- [x] 3.0 **Strategy Builder Page Implementation**
+  - [x] 3.1 Create `frontend/app/strategy/page.js` with extension selection interface
+  - [x] 3.2 Import and list available extensions from `builder` (Gas Station, Chainlink Calculator, Dutch Auction Calculator, Range Amount Calculator)
+  - [x] 3.3 Implement extension selection with checkbox/toggle interface
+  - [x] 3.4 Add extension collision detection using builder API to prevent incompatible combinations
+  - [x] 3.5 Display extension parameters for reference (read-only, no input collection at this stage)
+  - [x] 3.6 Create submit button that serializes selected extensions to base64 JSON
+  - [x] 3.7 Implement navigation to `/create?blueprint=...` with encoded extension data
+  - [x] 3.8 Add error handling for extension conflicts with user-friendly messages
 
 - [ ] 4.0 **Create Order Page Implementation**
   - [ ] 4.1 Create `frontend/app/create/page.js` with order parameter form
