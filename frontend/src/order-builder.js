@@ -3,47 +3,11 @@ import {
   LimitOrder,
   Address,
   ExtensionBuilder,
+  Extension,
 } from '@1inch/limit-order-sdk';
 import { TypedDataEncoder } from 'ethers';
-
-/**
- * @fileoverview OrderBuilder for 1inch Limit Order Protocol v4
- *
- * This module provides a lightweight JavaScript helper for creating, configuring,
- * and signing 1inch Limit Order Protocol (LOP) v4 orders. It converts raw user
- * input into fully-formed orders with optional extension hooks.
- *
- * @author Denis Perov <denis.perov@gmail.com>
- * @version 1.0.0
- */
-
-/**
- * @typedef {Object} ExtensionWrapper
- * @property {Object} meta - Extension metadata
- * @property {string} meta.name - Extension name
- * @property {string} meta.description - Extension description
- * @property {string} meta.version - Extension version
- * @property {Object.<string, Object>} schemas - Hook parameter schemas mapped by hook type
- * @property {Function} build - Function to build Extension instance from parameters
- * @property {Function} validate - Function to validate parameters against schemas
- */
-
-/**
- * @typedef {Object} OrderResult
- * @property {Object} order - The built LimitOrder struct ready for on-chain submission
- * @property {string} orderHash - EIP-712 hash of the order for verification
- * @property {string} signature - EIP-712 signature of the order from the maker
- */
-
-/**
- * @typedef {Object} OrderInfo
- * @property {Address} maker - Address of the order maker
- * @property {Address} makerAsset - ERC-20 address of the asset being offered
- * @property {Address} takerAsset - ERC-20 address of the asset being requested
- * @property {bigint} makingAmount - Amount of maker asset being offered
- * @property {bigint} takingAmount - Amount of taker asset being requested
- * @property {Address} receiver - Address that will receive the filled order
- */
+import { config } from './config.js';
+import { HookType } from './constants.js';
 
 /**
  * Custom error thrown when extension wrappers have overlapping hook types.
@@ -163,11 +127,10 @@ export class OrderBuilder {
     this.takerAsset = takerAsset;
     this.takerAmount = takerAmount;
     this.receiver = receiver;
-
     // Initialize MakerTraits instance
-    this.makerTraits = new MakerTraits();
-
+    this.makerTraits = MakerTraits.default();
     // Storage for extension wrappers and hook collision detection
+    /** @type {ExtensionWrapper[]} */
     this.extensions = [];
     this.usedHooks = new Set();
   }
@@ -201,19 +164,15 @@ export class OrderBuilder {
   }
 
   /**
-   * Add an extension wrapper to the order with automatic hook collision detection.
+   * Add an extension to the order with automatic hook collision detection.
    *
    * Extensions provide advanced functionality like dynamic pricing, gas optimization,
    * and custom interactions. This method safely combines multiple extensions by
    * preventing hook collisions that could cause undefined behavior.
    *
-   * @param {ExtensionWrapper} wrapper - Extension wrapper implementing LOP hook types
-   * @param {Object} wrapper.schemas - Hook schemas mapped by hook type (makerAmount, takerAmount, etc.)
-   * @param {Function} wrapper.build - Function to build Extension instance from parameters
-   * @param {Object} wrapper.meta - Extension metadata (name, description, version)
-   *
-   * @throws {HookCollisionError} If wrapper defines a hook already used by another extension
-   * @throws {TypeError} If wrapper is missing required properties
+   * @param {ExtensionWrapper} extension - Extension implementing LOP hook types
+   * @throws {HookCollisionError} If extension defines a hook already used by another extension
+   * @throws {TypeError} If extension is missing required properties
    *
    * @example
    * // Add single extension
@@ -236,10 +195,10 @@ export class OrderBuilder {
    * builder.addExtension(dutchAuction);    // uses makerAmount
    * builder.addExtension(rangeCalculator); // also uses makerAmount - COLLISION!
    */
-  addExtension(wrapper) {
+  addExtension(extension) {
     // Check for hook collisions with previously added extensions
-    if (wrapper.schemas) {
-      const newHooks = Object.keys(wrapper.schemas);
+    if (extension.schemas) {
+      const newHooks = Object.keys(extension.schemas);
       for (const hookName of newHooks) {
         if (this.usedHooks.has(hookName)) {
           throw new HookCollisionError(hookName);
@@ -253,7 +212,7 @@ export class OrderBuilder {
     }
 
     // Store wrapper for later use in build()
-    this.extensions.push(wrapper);
+    this.extensions.push(extension);
   }
 
   /**
@@ -267,26 +226,26 @@ export class OrderBuilder {
    *
    * The method ensures all extensions are properly combined and validates
    * that no hook collisions exist before proceeding with order construction.
+   * Chain ID is automatically retrieved from the network configuration.
    *
    * @param {import('ethers').Signer} signer - Ethers.js signer instance (EOA wallets only)
-   * @param {number} chainId - EIP-155 chain ID for domain separation (1 for mainnet, 137 for Polygon, etc.)
+   * @param {Object} [params={}] - Parameters to pass to extension build functions
    *
    * @returns {Promise<OrderResult>} Promise resolving to signed order data
-   * @returns {Promise<{order: Object, orderHash: string, signature: string}>} Serializable order data
    *
    * @throws {Error} If signer is not an EOA (smart contract wallets not supported)
    * @throws {Error} If multiple extensions cannot be combined safely
-   * @throws {TypeError} If chainId is not a valid number
    *
    * @example
    * // Basic order signing
    * import { Wallet } from 'ethers';
    *
    * const wallet = new Wallet(privateKey, provider);
-   * const result = await builder.build(wallet, 1);
+   * const result = await builder.build(wallet);
    *
    * console.log('Order hash:', result.orderHash);
    * console.log('Signature:', result.signature);
+   * console.log('Extension:', result.extension);
    *
    * // Submit to 1inch backend or contract
    * await submitOrder(result.order, result.signature);
@@ -299,12 +258,13 @@ export class OrderBuilder {
    *
    * builder.addExtension(chainlinkCalculator);
    *
-   * const signedOrder = await builder.build(signer, 137); // Polygon
+   * const params = { priceSpread: 0.01, updateInterval: 300 };
+   * const signedOrder = await builder.build(signer, params);
    *
    * @example
    * // Error handling
    * try {
-   *   const result = await builder.build(signer, chainId);
+   *   const result = await builder.build(signer, params);
    *   await submitToContract(result);
    * } catch (error) {
    *   console.error('Order building failed:', error.message);
@@ -313,20 +273,16 @@ export class OrderBuilder {
    * @see {@link https://eips.ethereum.org/EIPS/eip-712} EIP-712 Typed Data Standard
    * @see {@link https://docs.1inch.io/docs/limit-order-protocol/introduction} 1inch LOP Documentation
    */
-  async build(signer, chainId) {
+  async build(signer, params = {}) {
     // Get the maker address from the signer
     const makerAddress = new Address(await signer.getAddress());
-
     // Create Address instances for assets
     const makerAsset = new Address(this.makerAsset);
     const takerAsset = new Address(this.takerAsset);
-
     // Create receiver address (defaults to maker if not specified)
     const receiver = this.receiver ? new Address(this.receiver) : makerAddress;
-
     // Combine all extensions into a single Extension instance
-    const combinedExtension = this._combineExtensions();
-
+    const extension = this._combineExtensions(params);
     // Create the order info object
     const orderInfo = {
       maker: makerAddress,
@@ -336,34 +292,22 @@ export class OrderBuilder {
       takingAmount: BigInt(this.takerAmount),
       receiver,
     };
-
     // Construct LimitOrder with current params and combined extensions
-    const order = new LimitOrder(
-      orderInfo,
-      this.makerTraits,
-      combinedExtension
-    );
-
+    const order = new LimitOrder(orderInfo, this.makerTraits, extension);
     // Compute order hash using EIP-712 typed data
-    const typedData = order.getTypedData(chainId);
-    const orderHash = TypedDataEncoder.hash(
-      typedData.domain,
-      typedData.types,
-      typedData.message
-    );
-
+    const typedData = order.getTypedData(config.network.chainId);
     // Sign typed data with the supplied signer (EOA only)
     const signature = await signer.signTypedData(
       typedData.domain,
-      typedData.types,
+      { Order: typedData.types.Order },
       typedData.message
     );
-
-    // Return serializable object with order, orderHash, and signature
+    // Return serializable object with order, orderHash, signature, and extension
     return {
       order: order.build(),
-      orderHash,
+      orderHash: order.getOrderHash(),
       signature,
+      extension,
     };
   }
 
@@ -374,42 +318,43 @@ export class OrderBuilder {
    * ensuring no hook collisions exist and properly merging extension functionality.
    * When no extensions are present, returns undefined for vanilla orders.
    *
-   * Current implementation supports:
+   * Implementation supports:
    * - Zero extensions (returns undefined)
-   * - Single extension (builds directly)
-   * - Multiple extensions (TODO: requires advanced merging logic)
+   * - Single extension (builds directly with params)
+   * - Multiple extensions (merges all extension results)
    *
    * @private
    * @internal
    *
+   * @param {Object} params - Parameters to pass to each extension's build function
    * @returns {import('@1inch/limit-order-sdk').Extension|undefined} Combined extension instance or undefined
-   *
-   * @throws {Error} When multiple extensions are added (not yet implemented)
    *
    * @example
    * // Internal usage - called automatically by build()
-   * const extension = this._combineExtensions();
+   * const extension = this._combineExtensions(params);
    * if (extension) {
    *   // Order will use the combined extension
    * } else {
    *   // Vanilla order without extensions
    * }
-   *
-   * @todo Implement proper extension combination logic for multiple extensions
-   * @todo Add support for complex extension merging strategies
    */
-  _combineExtensions() {
-    if (this.extensions.length === 0) {
-      return undefined;
+  _combineExtensions(params) {
+    const combined = new Extension();
+    for (const extension of this.extensions) {
+      const result = extension.build(params);
+      if (HookType.MAKER_AMOUNT in extension.schemas) {
+        combined.makingAmountData = result.makingAmountData;
+      }
+      if (HookType.TAKER_AMOUNT in extension.schemas) {
+        combined.takingAmountData = result.takingAmountData;
+      }
+      if (HookType.PRE_INTERACTION in extension.schemas) {
+        combined.preInteraction = result.preInteraction;
+      }
+      if (HookType.POST_INTERACTION in extension.schemas) {
+        combined.postInteraction = result.postInteraction;
+      }
     }
-
-    // If only one extension, build it directly
-    if (this.extensions.length === 1) {
-      return this.extensions[0].build({});
-    }
-
-    // TODO: Implement proper extension combination logic
-    // For now, throw an error as this needs careful implementation
-    throw new Error('Multiple extension combination not yet implemented');
+    return combined;
   }
 }

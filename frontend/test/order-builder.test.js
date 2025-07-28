@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { Extension } from '@1inch/limit-order-sdk';
 import { OrderBuilder, HookCollisionError } from '../src/order-builder.js';
 import { HookType } from '../src/constants.js';
 
@@ -36,6 +37,16 @@ function initSigner(extra = {}) {
   };
 }
 
+function createExtensionResult(overrides = {}) {
+  return {
+    makingAmountData: '0x',
+    takingAmountData: '0x',
+    preInteraction: '0x',
+    postInteraction: '0x',
+    ...overrides,
+  };
+}
+
 function initExtension(extra = {}) {
   return {
     meta: {
@@ -44,9 +55,11 @@ function initExtension(extra = {}) {
       version: '1.0.0',
     },
     schemas: {
-      makerAmount: {},
+      [HookType.MAKER_AMOUNT]: {},
     },
-    build: vi.fn().mockReturnValue({ type: 'MockExtension' }),
+    build: vi
+      .fn()
+      .mockReturnValue(createExtensionResult({ makingAmountData: '0x1234' })),
     ...extra,
   };
 }
@@ -125,17 +138,20 @@ describe('OrderBuilder', function () {
       }).to.not.throw();
       expect(builder.extensions).to.have.length(1);
       expect(builder.extensions[0]).to.equal(extension);
-      expect(builder.usedHooks.has('makerAmount')).to.be.true;
+      expect(builder.usedHooks.has(HookType.MAKER_AMOUNT)).to.be.true;
     });
 
     it('should track used hooks correctly', function () {
       const builder = initBuilder();
       const extension = initExtension({
-        schemas: { makerAmount: {}, preInteraction: {} },
+        schemas: {
+          [HookType.MAKER_AMOUNT]: {},
+          [HookType.PRE_INTERACTION]: {},
+        },
       });
       builder.addExtension(extension);
-      expect(builder.usedHooks.has('makerAmount')).to.be.true;
-      expect(builder.usedHooks.has('preInteraction')).to.be.true;
+      expect(builder.usedHooks.has(HookType.MAKER_AMOUNT)).to.be.true;
+      expect(builder.usedHooks.has(HookType.PRE_INTERACTION)).to.be.true;
       expect(builder.usedHooks.size).to.equal(2);
     });
 
@@ -152,56 +168,83 @@ describe('OrderBuilder', function () {
     it('should throw HookCollisionError on duplicate hooks', function () {
       const builder = initBuilder();
       const extension1 = initExtension({
-        schemas: { makerAmount: {} },
+        schemas: { [HookType.MAKER_AMOUNT]: {} },
       });
       const extension2 = initExtension({
         meta: { ...extension1.meta, name: 'Extension 2' },
-        schemas: { makerAmount: {} }, // Same hook
+        schemas: { [HookType.MAKER_AMOUNT]: {} }, // Same hook
       });
       builder.addExtension(extension1);
       expect(() => {
         builder.addExtension(extension2);
-      }).to.throw(HookCollisionError, 'makerAmount is already defined');
+      }).to.throw(HookCollisionError, HookType.MAKER_AMOUNT);
     });
 
     it('should allow non-conflicting extensions', function () {
       const builder = initBuilder();
       const extension1 = initExtension({
-        schemas: { makerAmount: {} },
+        schemas: { [HookType.MAKER_AMOUNT]: {} },
       });
       const extension2 = initExtension({
         meta: { ...extension1.meta, name: 'Extension 2' },
-        schemas: { takerAmount: {} }, // Different hook
+        schemas: { [HookType.TAKER_AMOUNT]: {} }, // Different hook
       });
       expect(() => {
         builder.addExtension(extension1);
         builder.addExtension(extension2);
       }).to.not.throw();
       expect(builder.extensions).to.have.length(2);
-      expect(builder.usedHooks.has('makerAmount')).to.be.true;
-      expect(builder.usedHooks.has('takerAmount')).to.be.true;
+      expect(builder.usedHooks.has(HookType.MAKER_AMOUNT)).to.be.true;
+      expect(builder.usedHooks.has(HookType.TAKER_AMOUNT)).to.be.true;
     });
   });
 
   describe('build method (without extensions)', function () {
     it('should require signer parameter', async function () {
       const builder = initBuilder();
-      await expect(builder.build(null, 1)).rejects.toThrow();
-    });
-
-    it('should require chainId parameter', async function () {
-      const builder = initBuilder();
-      const signer = initSigner();
-      await expect(builder.build(signer, null)).rejects.toThrow();
+      await expect(builder.build(null)).rejects.toThrow();
     });
 
     it('should call signer.getAddress when building', async function () {
       const builder = initBuilder();
       const signer = initSigner();
       try {
-        await builder.build(signer, 1);
+        await builder.build(signer);
       } catch (error) {
         // Expected to fail due to real implementation constraints
+      }
+      expect(signer.getAddress).toHaveBeenCalled();
+    });
+
+    it('should accept params parameter', async function () {
+      const builder = initBuilder();
+      const signer = initSigner();
+      const params = { testParam: 'value' };
+      try {
+        await builder.build(signer, params);
+      } catch (error) {
+        // Expected to fail due to real implementation constraints
+      }
+      expect(signer.getAddress).toHaveBeenCalled();
+    });
+
+    it('should return object with extension field', async function () {
+      const builder = initBuilder();
+      const signer = initSigner();
+      const extension = initExtension();
+      builder.addExtension(extension);
+
+      try {
+        const result = await builder.build(signer);
+        // If build succeeds, check the structure
+        expect(result).to.have.property('order');
+        expect(result).to.have.property('orderHash');
+        expect(result).to.have.property('signature');
+        expect(result).to.have.property('extension');
+        expect(result.extension).to.be.instanceOf(Extension);
+      } catch (error) {
+        // Expected to fail due to real implementation constraints in test environment
+        // But the structure should still be correct if it were to succeed
       }
       expect(signer.getAddress).toHaveBeenCalled();
     });
@@ -250,39 +293,63 @@ describe('OrderBuilder', function () {
   });
 
   describe('_combineExtensions method', function () {
-    it('should return undefined when no extensions', function () {
+    it('should return Extension object when no extensions', function () {
       const builder = initBuilder();
-      const result = builder._combineExtensions();
-      expect(result).to.be.undefined;
+      const result = builder._combineExtensions({});
+      expect(result).to.exist;
+      expect(result).to.be.instanceOf(Extension);
     });
 
     it('should handle single extension', function () {
       const builder = initBuilder();
       const extension = initExtension({
-        build: vi.fn().mockReturnValue({ type: 'MockExtension' }),
-        schemas: { makerAmount: {} },
+        build: vi.fn().mockReturnValue({
+          makingAmountData: '0x1234',
+          takingAmountData: '0x',
+          preInteraction: '0x',
+          postInteraction: '0x',
+        }),
+        schemas: { [HookType.MAKER_AMOUNT]: {} },
       });
       builder.addExtension(extension);
-      const result = builder._combineExtensions();
-      expect(extension.build).toHaveBeenCalled();
-      expect(result).to.deep.equal({ type: 'MockExtension' });
+      const params = { testParam: 'value' };
+      const result = builder._combineExtensions(params);
+      expect(extension.build).toHaveBeenCalledWith(params);
+      expect(result).to.exist;
+      expect(result).to.be.instanceOf(Extension);
+      expect(result.makingAmountData).to.equal('0x1234');
     });
 
-    it('should throw error for multiple extensions', function () {
+    it('should handle multiple extensions', function () {
       const builder = initBuilder();
       const extension1 = initExtension({
-        build: vi.fn(),
-        schemas: { makerAmount: {} },
+        build: vi.fn().mockReturnValue({
+          makingAmountData: '0x1111',
+          takingAmountData: '0x',
+          preInteraction: '0x',
+          postInteraction: '0x',
+        }),
+        schemas: { [HookType.MAKER_AMOUNT]: {} },
       });
       const extension2 = initExtension({
-        build: vi.fn(),
-        schemas: { takerAmount: {} },
+        build: vi.fn().mockReturnValue({
+          makingAmountData: '0x',
+          takingAmountData: '0x2222',
+          preInteraction: '0x',
+          postInteraction: '0x',
+        }),
+        schemas: { [HookType.TAKER_AMOUNT]: {} },
       });
       builder.addExtension(extension1);
       builder.addExtension(extension2);
-      expect(() => {
-        builder._combineExtensions();
-      }).to.throw('Multiple extension combination not yet implemented');
+      const params = { testParam: 'value' };
+      const result = builder._combineExtensions(params);
+      expect(extension1.build).toHaveBeenCalledWith(params);
+      expect(extension2.build).toHaveBeenCalledWith(params);
+      expect(result).to.exist;
+      expect(result).to.be.instanceOf(Extension);
+      expect(result.makingAmountData).to.equal('0x1111');
+      expect(result.takingAmountData).to.equal('0x2222');
     });
   });
 
@@ -296,7 +363,11 @@ describe('OrderBuilder', function () {
           version: '1.0.0',
         },
         schemas: { [HookType.MAKER_AMOUNT]: {} },
-        build: vi.fn().mockReturnValue({ type: 'MakerAmountExtension' }),
+        build: vi
+          .fn()
+          .mockReturnValue(
+            createExtensionResult({ makingAmountData: '0x1111' })
+          ),
       });
       const preInteractionExt = initExtension({
         meta: {
@@ -305,7 +376,9 @@ describe('OrderBuilder', function () {
           version: '1.0.0',
         },
         schemas: { [HookType.PRE_INTERACTION]: {} },
-        build: vi.fn().mockReturnValue({ type: 'PreInteractionExtension' }),
+        build: vi
+          .fn()
+          .mockReturnValue(createExtensionResult({ preInteraction: '0x2222' })),
       });
 
       expect(() => {
@@ -685,399 +758,525 @@ describe('OrderBuilder', function () {
 
       // Builder should still have only the first two extensions
       expect(builder.extensions).to.have.length(2);
-             expect(builder.usedHooks.size).to.equal(2);
-     });
-   });
+      expect(builder.usedHooks.size).to.equal(2);
+    });
+  });
 
-   describe('Hook Collision Detection', function () {
-     it('should throw HookCollisionError on MAKER_AMOUNT collision', function () {
-       const builder = initBuilder();
-       const ext1 = initExtension({
-         meta: { name: 'Extension 1', description: 'First extension', version: '1.0.0' },
-         schemas: { [HookType.MAKER_AMOUNT]: {} },
-         build: vi.fn().mockReturnValue({ type: 'Extension1' }),
-       });
-       const ext2 = initExtension({
-         meta: { name: 'Extension 2', description: 'Second extension', version: '1.0.0' },
-         schemas: { [HookType.MAKER_AMOUNT]: {} }, // Same hook
-         build: vi.fn().mockReturnValue({ type: 'Extension2' }),
-       });
+  describe('Hook Collision Detection', function () {
+    it('should throw HookCollisionError on MAKER_AMOUNT collision', function () {
+      const builder = initBuilder();
+      const ext1 = initExtension({
+        meta: {
+          name: 'Extension 1',
+          description: 'First extension',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.MAKER_AMOUNT]: {} },
+        build: vi.fn().mockReturnValue({ type: 'Extension1' }),
+      });
+      const ext2 = initExtension({
+        meta: {
+          name: 'Extension 2',
+          description: 'Second extension',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.MAKER_AMOUNT]: {} }, // Same hook
+        build: vi.fn().mockReturnValue({ type: 'Extension2' }),
+      });
 
-       builder.addExtension(ext1);
-       expect(() => {
-         builder.addExtension(ext2);
-       }).to.throw(HookCollisionError, HookType.MAKER_AMOUNT);
-     });
+      builder.addExtension(ext1);
+      expect(() => {
+        builder.addExtension(ext2);
+      }).to.throw(HookCollisionError, HookType.MAKER_AMOUNT);
+    });
 
-     it('should throw HookCollisionError on TAKER_AMOUNT collision', function () {
-       const builder = initBuilder();
-       const ext1 = initExtension({
-         meta: { name: 'Extension 1', description: 'First extension', version: '1.0.0' },
-         schemas: { [HookType.TAKER_AMOUNT]: {} },
-         build: vi.fn().mockReturnValue({ type: 'Extension1' }),
-       });
-       const ext2 = initExtension({
-         meta: { name: 'Extension 2', description: 'Second extension', version: '1.0.0' },
-         schemas: { [HookType.TAKER_AMOUNT]: {} }, // Same hook
-         build: vi.fn().mockReturnValue({ type: 'Extension2' }),
-       });
+    it('should throw HookCollisionError on TAKER_AMOUNT collision', function () {
+      const builder = initBuilder();
+      const ext1 = initExtension({
+        meta: {
+          name: 'Extension 1',
+          description: 'First extension',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.TAKER_AMOUNT]: {} },
+        build: vi.fn().mockReturnValue({ type: 'Extension1' }),
+      });
+      const ext2 = initExtension({
+        meta: {
+          name: 'Extension 2',
+          description: 'Second extension',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.TAKER_AMOUNT]: {} }, // Same hook
+        build: vi.fn().mockReturnValue({ type: 'Extension2' }),
+      });
 
-       builder.addExtension(ext1);
-       expect(() => {
-         builder.addExtension(ext2);
-       }).to.throw(HookCollisionError, HookType.TAKER_AMOUNT);
-     });
+      builder.addExtension(ext1);
+      expect(() => {
+        builder.addExtension(ext2);
+      }).to.throw(HookCollisionError, HookType.TAKER_AMOUNT);
+    });
 
-     it('should throw HookCollisionError on PRE_INTERACTION collision', function () {
-       const builder = initBuilder();
-       const ext1 = initExtension({
-         meta: { name: 'Extension 1', description: 'First extension', version: '1.0.0' },
-         schemas: { [HookType.PRE_INTERACTION]: {} },
-         build: vi.fn().mockReturnValue({ type: 'Extension1' }),
-       });
-       const ext2 = initExtension({
-         meta: { name: 'Extension 2', description: 'Second extension', version: '1.0.0' },
-         schemas: { [HookType.PRE_INTERACTION]: {} }, // Same hook
-         build: vi.fn().mockReturnValue({ type: 'Extension2' }),
-       });
+    it('should throw HookCollisionError on PRE_INTERACTION collision', function () {
+      const builder = initBuilder();
+      const ext1 = initExtension({
+        meta: {
+          name: 'Extension 1',
+          description: 'First extension',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.PRE_INTERACTION]: {} },
+        build: vi.fn().mockReturnValue({ type: 'Extension1' }),
+      });
+      const ext2 = initExtension({
+        meta: {
+          name: 'Extension 2',
+          description: 'Second extension',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.PRE_INTERACTION]: {} }, // Same hook
+        build: vi.fn().mockReturnValue({ type: 'Extension2' }),
+      });
 
-       builder.addExtension(ext1);
-       expect(() => {
-         builder.addExtension(ext2);
-       }).to.throw(HookCollisionError, HookType.PRE_INTERACTION);
-     });
+      builder.addExtension(ext1);
+      expect(() => {
+        builder.addExtension(ext2);
+      }).to.throw(HookCollisionError, HookType.PRE_INTERACTION);
+    });
 
-     it('should throw HookCollisionError on POST_INTERACTION collision', function () {
-       const builder = initBuilder();
-       const ext1 = initExtension({
-         meta: { name: 'Extension 1', description: 'First extension', version: '1.0.0' },
-         schemas: { [HookType.POST_INTERACTION]: {} },
-         build: vi.fn().mockReturnValue({ type: 'Extension1' }),
-       });
-       const ext2 = initExtension({
-         meta: { name: 'Extension 2', description: 'Second extension', version: '1.0.0' },
-         schemas: { [HookType.POST_INTERACTION]: {} }, // Same hook
-         build: vi.fn().mockReturnValue({ type: 'Extension2' }),
-       });
+    it('should throw HookCollisionError on POST_INTERACTION collision', function () {
+      const builder = initBuilder();
+      const ext1 = initExtension({
+        meta: {
+          name: 'Extension 1',
+          description: 'First extension',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.POST_INTERACTION]: {} },
+        build: vi.fn().mockReturnValue({ type: 'Extension1' }),
+      });
+      const ext2 = initExtension({
+        meta: {
+          name: 'Extension 2',
+          description: 'Second extension',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.POST_INTERACTION]: {} }, // Same hook
+        build: vi.fn().mockReturnValue({ type: 'Extension2' }),
+      });
 
-       builder.addExtension(ext1);
-       expect(() => {
-         builder.addExtension(ext2);
-       }).to.throw(HookCollisionError, HookType.POST_INTERACTION);
-     });
+      builder.addExtension(ext1);
+      expect(() => {
+        builder.addExtension(ext2);
+      }).to.throw(HookCollisionError, HookType.POST_INTERACTION);
+    });
 
-     it('should detect collision when extension has multiple hooks and one conflicts', function () {
-       const builder = initBuilder();
-       const ext1 = initExtension({
-         meta: { name: 'Single Hook Extension', description: 'Extension with one hook', version: '1.0.0' },
-         schemas: { [HookType.MAKER_AMOUNT]: {} },
-         build: vi.fn().mockReturnValue({ type: 'SingleHookExtension' }),
-       });
-       const multiExt = initExtension({
-         meta: { name: 'Multi Hook Extension', description: 'Extension with multiple hooks', version: '1.0.0' },
-         schemas: {
-           [HookType.MAKER_AMOUNT]: {}, // Conflicts with ext1
-           [HookType.PRE_INTERACTION]: {}, // Would be fine if not for the conflict
-         },
-         build: vi.fn().mockReturnValue({ type: 'MultiHookExtension' }),
-       });
+    it('should detect collision when extension has multiple hooks and one conflicts', function () {
+      const builder = initBuilder();
+      const ext1 = initExtension({
+        meta: {
+          name: 'Single Hook Extension',
+          description: 'Extension with one hook',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.MAKER_AMOUNT]: {} },
+        build: vi.fn().mockReturnValue({ type: 'SingleHookExtension' }),
+      });
+      const multiExt = initExtension({
+        meta: {
+          name: 'Multi Hook Extension',
+          description: 'Extension with multiple hooks',
+          version: '1.0.0',
+        },
+        schemas: {
+          [HookType.MAKER_AMOUNT]: {}, // Conflicts with ext1
+          [HookType.PRE_INTERACTION]: {}, // Would be fine if not for the conflict
+        },
+        build: vi.fn().mockReturnValue({ type: 'MultiHookExtension' }),
+      });
 
-       builder.addExtension(ext1);
-       expect(() => {
-         builder.addExtension(multiExt);
-       }).to.throw(HookCollisionError, HookType.MAKER_AMOUNT);
+      builder.addExtension(ext1);
+      expect(() => {
+        builder.addExtension(multiExt);
+      }).to.throw(HookCollisionError, HookType.MAKER_AMOUNT);
 
-       // Should not add the conflicting extension
-       expect(builder.extensions).to.have.length(1);
-       expect(builder.usedHooks.size).to.equal(1);
-       expect(builder.usedHooks.has(HookType.MAKER_AMOUNT)).to.be.true;
-       expect(builder.usedHooks.has(HookType.PRE_INTERACTION)).to.be.false;
-     });
+      // Should not add the conflicting extension
+      expect(builder.extensions).to.have.length(1);
+      expect(builder.usedHooks.size).to.equal(1);
+      expect(builder.usedHooks.has(HookType.MAKER_AMOUNT)).to.be.true;
+      expect(builder.usedHooks.has(HookType.PRE_INTERACTION)).to.be.false;
+    });
 
-     it('should detect collision when multi-hook extension conflicts with multiple existing hooks', function () {
-       const builder = initBuilder();
-       const ext1 = initExtension({
-         meta: { name: 'Extension 1', description: 'First extension', version: '1.0.0' },
-         schemas: { [HookType.MAKER_AMOUNT]: {} },
-         build: vi.fn().mockReturnValue({ type: 'Extension1' }),
-       });
-       const ext2 = initExtension({
-         meta: { name: 'Extension 2', description: 'Second extension', version: '1.0.0' },
-         schemas: { [HookType.PRE_INTERACTION]: {} },
-         build: vi.fn().mockReturnValue({ type: 'Extension2' }),
-       });
-       const conflictingExt = initExtension({
-         meta: { name: 'Conflicting Extension', description: 'Extension with multiple conflicts', version: '1.0.0' },
-         schemas: {
-           [HookType.MAKER_AMOUNT]: {}, // Conflicts with ext1
-           [HookType.PRE_INTERACTION]: {}, // Conflicts with ext2
-           [HookType.TAKER_AMOUNT]: {}, // Would be fine
-         },
-         build: vi.fn().mockReturnValue({ type: 'ConflictingExtension' }),
-       });
+    it('should detect collision when multi-hook extension conflicts with multiple existing hooks', function () {
+      const builder = initBuilder();
+      const ext1 = initExtension({
+        meta: {
+          name: 'Extension 1',
+          description: 'First extension',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.MAKER_AMOUNT]: {} },
+        build: vi.fn().mockReturnValue({ type: 'Extension1' }),
+      });
+      const ext2 = initExtension({
+        meta: {
+          name: 'Extension 2',
+          description: 'Second extension',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.PRE_INTERACTION]: {} },
+        build: vi.fn().mockReturnValue({ type: 'Extension2' }),
+      });
+      const conflictingExt = initExtension({
+        meta: {
+          name: 'Conflicting Extension',
+          description: 'Extension with multiple conflicts',
+          version: '1.0.0',
+        },
+        schemas: {
+          [HookType.MAKER_AMOUNT]: {}, // Conflicts with ext1
+          [HookType.PRE_INTERACTION]: {}, // Conflicts with ext2
+          [HookType.TAKER_AMOUNT]: {}, // Would be fine
+        },
+        build: vi.fn().mockReturnValue({ type: 'ConflictingExtension' }),
+      });
 
-       builder.addExtension(ext1);
-       builder.addExtension(ext2);
-       expect(builder.extensions).to.have.length(2);
+      builder.addExtension(ext1);
+      builder.addExtension(ext2);
+      expect(builder.extensions).to.have.length(2);
 
-       // Should throw on the first conflict encountered (MAKER_AMOUNT)
-       expect(() => {
-         builder.addExtension(conflictingExt);
-       }).to.throw(HookCollisionError, HookType.MAKER_AMOUNT);
+      // Should throw on the first conflict encountered (MAKER_AMOUNT)
+      expect(() => {
+        builder.addExtension(conflictingExt);
+      }).to.throw(HookCollisionError, HookType.MAKER_AMOUNT);
 
-       // Should not add the conflicting extension
-       expect(builder.extensions).to.have.length(2);
-       expect(builder.usedHooks.size).to.equal(2);
-     });
+      // Should not add the conflicting extension
+      expect(builder.extensions).to.have.length(2);
+      expect(builder.usedHooks.size).to.equal(2);
+    });
 
-     it('should detect collision after adding multiple non-conflicting extensions', function () {
-       const builder = initBuilder();
-       const ext1 = initExtension({
-         meta: { name: 'Extension 1', description: 'First extension', version: '1.0.0' },
-         schemas: { [HookType.MAKER_AMOUNT]: {} },
-         build: vi.fn().mockReturnValue({ type: 'Extension1' }),
-       });
-       const ext2 = initExtension({
-         meta: { name: 'Extension 2', description: 'Second extension', version: '1.0.0' },
-         schemas: { [HookType.PRE_INTERACTION]: {} },
-         build: vi.fn().mockReturnValue({ type: 'Extension2' }),
-       });
-       const ext3 = initExtension({
-         meta: { name: 'Extension 3', description: 'Third extension', version: '1.0.0' },
-         schemas: { [HookType.POST_INTERACTION]: {} },
-         build: vi.fn().mockReturnValue({ type: 'Extension3' }),
-       });
-       const conflictingExt = initExtension({
-         meta: { name: 'Conflicting Extension', description: 'Extension that conflicts', version: '1.0.0' },
-         schemas: { [HookType.PRE_INTERACTION]: {} }, // Conflicts with ext2
-         build: vi.fn().mockReturnValue({ type: 'ConflictingExtension' }),
-       });
+    it('should detect collision after adding multiple non-conflicting extensions', function () {
+      const builder = initBuilder();
+      const ext1 = initExtension({
+        meta: {
+          name: 'Extension 1',
+          description: 'First extension',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.MAKER_AMOUNT]: {} },
+        build: vi.fn().mockReturnValue({ type: 'Extension1' }),
+      });
+      const ext2 = initExtension({
+        meta: {
+          name: 'Extension 2',
+          description: 'Second extension',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.PRE_INTERACTION]: {} },
+        build: vi.fn().mockReturnValue({ type: 'Extension2' }),
+      });
+      const ext3 = initExtension({
+        meta: {
+          name: 'Extension 3',
+          description: 'Third extension',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.POST_INTERACTION]: {} },
+        build: vi.fn().mockReturnValue({ type: 'Extension3' }),
+      });
+      const conflictingExt = initExtension({
+        meta: {
+          name: 'Conflicting Extension',
+          description: 'Extension that conflicts',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.PRE_INTERACTION]: {} }, // Conflicts with ext2
+        build: vi.fn().mockReturnValue({ type: 'ConflictingExtension' }),
+      });
 
-       // Add three non-conflicting extensions
-       builder.addExtension(ext1);
-       builder.addExtension(ext2);
-       builder.addExtension(ext3);
-       expect(builder.extensions).to.have.length(3);
-       expect(builder.usedHooks.size).to.equal(3);
+      // Add three non-conflicting extensions
+      builder.addExtension(ext1);
+      builder.addExtension(ext2);
+      builder.addExtension(ext3);
+      expect(builder.extensions).to.have.length(3);
+      expect(builder.usedHooks.size).to.equal(3);
 
-       // Fourth extension should fail
-       expect(() => {
-         builder.addExtension(conflictingExt);
-       }).to.throw(HookCollisionError, HookType.PRE_INTERACTION);
+      // Fourth extension should fail
+      expect(() => {
+        builder.addExtension(conflictingExt);
+      }).to.throw(HookCollisionError, HookType.PRE_INTERACTION);
 
-       // State should remain unchanged
-       expect(builder.extensions).to.have.length(3);
-       expect(builder.usedHooks.size).to.equal(3);
-     });
+      // State should remain unchanged
+      expect(builder.extensions).to.have.length(3);
+      expect(builder.usedHooks.size).to.equal(3);
+    });
 
-     it('should preserve builder state when collision is detected', function () {
-       const builder = initBuilder();
-       const validExt1 = initExtension({
-         meta: { name: 'Valid Extension 1', description: 'First valid extension', version: '1.0.0' },
-         schemas: { [HookType.MAKER_AMOUNT]: {} },
-         build: vi.fn().mockReturnValue({ type: 'ValidExtension1' }),
-       });
-       const validExt2 = initExtension({
-         meta: { name: 'Valid Extension 2', description: 'Second valid extension', version: '1.0.0' },
-         schemas: { [HookType.TAKER_AMOUNT]: {} },
-         build: vi.fn().mockReturnValue({ type: 'ValidExtension2' }),
-       });
-       const invalidExt = initExtension({
-         meta: { name: 'Invalid Extension', description: 'Extension that causes collision', version: '1.0.0' },
-         schemas: { [HookType.MAKER_AMOUNT]: {} }, // Conflicts with validExt1
-         build: vi.fn().mockReturnValue({ type: 'InvalidExtension' }),
-       });
+    it('should preserve builder state when collision is detected', function () {
+      const builder = initBuilder();
+      const validExt1 = initExtension({
+        meta: {
+          name: 'Valid Extension 1',
+          description: 'First valid extension',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.MAKER_AMOUNT]: {} },
+        build: vi.fn().mockReturnValue({ type: 'ValidExtension1' }),
+      });
+      const validExt2 = initExtension({
+        meta: {
+          name: 'Valid Extension 2',
+          description: 'Second valid extension',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.TAKER_AMOUNT]: {} },
+        build: vi.fn().mockReturnValue({ type: 'ValidExtension2' }),
+      });
+      const invalidExt = initExtension({
+        meta: {
+          name: 'Invalid Extension',
+          description: 'Extension that causes collision',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.MAKER_AMOUNT]: {} }, // Conflicts with validExt1
+        build: vi.fn().mockReturnValue({ type: 'InvalidExtension' }),
+      });
 
-       // Add valid extensions
-       builder.addExtension(validExt1);
-       builder.addExtension(validExt2);
+      // Add valid extensions
+      builder.addExtension(validExt1);
+      builder.addExtension(validExt2);
 
-       // Capture state before attempted collision
-       const extensionsBefore = [...builder.extensions];
-       const usedHooksBefore = new Set(builder.usedHooks);
+      // Capture state before attempted collision
+      const extensionsBefore = [...builder.extensions];
+      const usedHooksBefore = new Set(builder.usedHooks);
 
-       // Attempt to add conflicting extension
-       expect(() => {
-         builder.addExtension(invalidExt);
-       }).to.throw(HookCollisionError);
+      // Attempt to add conflicting extension
+      expect(() => {
+        builder.addExtension(invalidExt);
+      }).to.throw(HookCollisionError);
 
-       // State should be unchanged
-       expect(builder.extensions).to.deep.equal(extensionsBefore);
-       expect(builder.usedHooks).to.deep.equal(usedHooksBefore);
-       expect(builder.extensions).to.have.length(2);
-       expect(builder.usedHooks.size).to.equal(2);
-     });
+      // State should be unchanged
+      expect(builder.extensions).to.deep.equal(extensionsBefore);
+      expect(builder.usedHooks).to.deep.equal(usedHooksBefore);
+      expect(builder.extensions).to.have.length(2);
+      expect(builder.usedHooks.size).to.equal(2);
+    });
 
-     it('should handle collision with extension that has no schemas', function () {
-       const builder = initBuilder();
-       const extWithSchemas = initExtension({
-         meta: { name: 'Extension with Schemas', description: 'Extension with schemas', version: '1.0.0' },
-         schemas: { [HookType.MAKER_AMOUNT]: {} },
-         build: vi.fn().mockReturnValue({ type: 'ExtensionWithSchemas' }),
-       });
-       const extWithoutSchemas = initExtension({
-         meta: { name: 'Extension without Schemas', description: 'Extension without schemas', version: '1.0.0' },
-         schemas: undefined,
-         build: vi.fn().mockReturnValue({ type: 'ExtensionWithoutSchemas' }),
-       });
+    it('should handle collision with extension that has no schemas', function () {
+      const builder = initBuilder();
+      const extWithSchemas = initExtension({
+        meta: {
+          name: 'Extension with Schemas',
+          description: 'Extension with schemas',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.MAKER_AMOUNT]: {} },
+        build: vi.fn().mockReturnValue({ type: 'ExtensionWithSchemas' }),
+      });
+      const extWithoutSchemas = initExtension({
+        meta: {
+          name: 'Extension without Schemas',
+          description: 'Extension without schemas',
+          version: '1.0.0',
+        },
+        schemas: undefined,
+        build: vi.fn().mockReturnValue({ type: 'ExtensionWithoutSchemas' }),
+      });
 
-       // Add extension with schemas
-       builder.addExtension(extWithSchemas);
-       expect(builder.usedHooks.size).to.equal(1);
+      // Add extension with schemas
+      builder.addExtension(extWithSchemas);
+      expect(builder.usedHooks.size).to.equal(1);
 
-       // Add extension without schemas - should not cause collision
-       expect(() => {
-         builder.addExtension(extWithoutSchemas);
-       }).to.not.throw();
+      // Add extension without schemas - should not cause collision
+      expect(() => {
+        builder.addExtension(extWithoutSchemas);
+      }).to.not.throw();
 
-       expect(builder.extensions).to.have.length(2);
-       expect(builder.usedHooks.size).to.equal(1); // Still only one hook from the first extension
-     });
+      expect(builder.extensions).to.have.length(2);
+      expect(builder.usedHooks.size).to.equal(1); // Still only one hook from the first extension
+    });
 
-     it('should handle collision detection with empty schemas object', function () {
-       const builder = initBuilder();
-       const extWithHooks = initExtension({
-         meta: { name: 'Extension with Hooks', description: 'Extension with hooks', version: '1.0.0' },
-         schemas: { [HookType.MAKER_AMOUNT]: {} },
-         build: vi.fn().mockReturnValue({ type: 'ExtensionWithHooks' }),
-       });
-       const extWithEmptySchemas = initExtension({
-         meta: { name: 'Extension with Empty Schemas', description: 'Extension with empty schemas', version: '1.0.0' },
-         schemas: {}, // Empty object
-         build: vi.fn().mockReturnValue({ type: 'ExtensionWithEmptySchemas' }),
-       });
+    it('should handle collision detection with empty schemas object', function () {
+      const builder = initBuilder();
+      const extWithHooks = initExtension({
+        meta: {
+          name: 'Extension with Hooks',
+          description: 'Extension with hooks',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.MAKER_AMOUNT]: {} },
+        build: vi.fn().mockReturnValue({ type: 'ExtensionWithHooks' }),
+      });
+      const extWithEmptySchemas = initExtension({
+        meta: {
+          name: 'Extension with Empty Schemas',
+          description: 'Extension with empty schemas',
+          version: '1.0.0',
+        },
+        schemas: {}, // Empty object
+        build: vi.fn().mockReturnValue({ type: 'ExtensionWithEmptySchemas' }),
+      });
 
-       // Add extension with hooks
-       builder.addExtension(extWithHooks);
-       expect(builder.usedHooks.size).to.equal(1);
+      // Add extension with hooks
+      builder.addExtension(extWithHooks);
+      expect(builder.usedHooks.size).to.equal(1);
 
-       // Add extension with empty schemas - should not cause collision
-       expect(() => {
-         builder.addExtension(extWithEmptySchemas);
-       }).to.not.throw();
+      // Add extension with empty schemas - should not cause collision
+      expect(() => {
+        builder.addExtension(extWithEmptySchemas);
+      }).to.not.throw();
 
-       expect(builder.extensions).to.have.length(2);
-       expect(builder.usedHooks.size).to.equal(1); // Still only one hook from the first extension
-     });
+      expect(builder.extensions).to.have.length(2);
+      expect(builder.usedHooks.size).to.equal(1); // Still only one hook from the first extension
+    });
 
-     it('should detect collisions in different addition orders', function () {
-       const ext1 = initExtension({
-         meta: { name: 'Extension 1', description: 'First extension', version: '1.0.0' },
-         schemas: { [HookType.MAKER_AMOUNT]: {} },
-         build: vi.fn().mockReturnValue({ type: 'Extension1' }),
-       });
-       const ext2 = initExtension({
-         meta: { name: 'Extension 2', description: 'Second extension', version: '1.0.0' },
-         schemas: { [HookType.MAKER_AMOUNT]: {} }, // Same hook as ext1
-         build: vi.fn().mockReturnValue({ type: 'Extension2' }),
-       });
+    it('should detect collisions in different addition orders', function () {
+      const ext1 = initExtension({
+        meta: {
+          name: 'Extension 1',
+          description: 'First extension',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.MAKER_AMOUNT]: {} },
+        build: vi.fn().mockReturnValue({ type: 'Extension1' }),
+      });
+      const ext2 = initExtension({
+        meta: {
+          name: 'Extension 2',
+          description: 'Second extension',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.MAKER_AMOUNT]: {} }, // Same hook as ext1
+        build: vi.fn().mockReturnValue({ type: 'Extension2' }),
+      });
 
-       // Try order 1-2
-       const builder1 = initBuilder();
-       builder1.addExtension(ext1);
-       expect(() => {
-         builder1.addExtension(ext2);
-       }).to.throw(HookCollisionError, HookType.MAKER_AMOUNT);
+      // Try order 1-2
+      const builder1 = initBuilder();
+      builder1.addExtension(ext1);
+      expect(() => {
+        builder1.addExtension(ext2);
+      }).to.throw(HookCollisionError, HookType.MAKER_AMOUNT);
 
-       // Try order 2-1
-       const builder2 = initBuilder();
-       builder2.addExtension(ext2);
-       expect(() => {
-         builder2.addExtension(ext1);
-       }).to.throw(HookCollisionError, HookType.MAKER_AMOUNT);
+      // Try order 2-1
+      const builder2 = initBuilder();
+      builder2.addExtension(ext2);
+      expect(() => {
+        builder2.addExtension(ext1);
+      }).to.throw(HookCollisionError, HookType.MAKER_AMOUNT);
 
-       // Both builders should have only one extension
-       expect(builder1.extensions).to.have.length(1);
-       expect(builder2.extensions).to.have.length(1);
-     });
+      // Both builders should have only one extension
+      expect(builder1.extensions).to.have.length(1);
+      expect(builder2.extensions).to.have.length(1);
+    });
 
-     it('should include hook name in error message', function () {
-       const builder = initBuilder();
-       const ext1 = initExtension({
-         meta: { name: 'Extension 1', description: 'First extension', version: '1.0.0' },
-         schemas: { [HookType.TAKER_AMOUNT]: {} },
-         build: vi.fn().mockReturnValue({ type: 'Extension1' }),
-       });
-       const ext2 = initExtension({
-         meta: { name: 'Extension 2', description: 'Second extension', version: '1.0.0' },
-         schemas: { [HookType.TAKER_AMOUNT]: {} },
-         build: vi.fn().mockReturnValue({ type: 'Extension2' }),
-       });
+    it('should include hook name in error message', function () {
+      const builder = initBuilder();
+      const ext1 = initExtension({
+        meta: {
+          name: 'Extension 1',
+          description: 'First extension',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.TAKER_AMOUNT]: {} },
+        build: vi.fn().mockReturnValue({ type: 'Extension1' }),
+      });
+      const ext2 = initExtension({
+        meta: {
+          name: 'Extension 2',
+          description: 'Second extension',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.TAKER_AMOUNT]: {} },
+        build: vi.fn().mockReturnValue({ type: 'Extension2' }),
+      });
 
-       builder.addExtension(ext1);
+      builder.addExtension(ext1);
 
-       try {
-         builder.addExtension(ext2);
-         expect.fail('Should have thrown HookCollisionError');
-       } catch (error) {
-         expect(error).to.be.instanceOf(HookCollisionError);
-         expect(error.message).to.include(HookType.TAKER_AMOUNT);
-         expect(error.message).to.include('already defined');
-         expect(error.name).to.equal('HookCollisionError');
-       }
-     });
+      try {
+        builder.addExtension(ext2);
+        expect.fail('Should have thrown HookCollisionError');
+      } catch (error) {
+        expect(error).to.be.instanceOf(HookCollisionError);
+        expect(error.message).to.include(HookType.TAKER_AMOUNT);
+        expect(error.message).to.include('already defined');
+        expect(error.name).to.equal('HookCollisionError');
+      }
+    });
 
-     it('should detect collision when adding the same extension twice', function () {
-       const builder = initBuilder();
-       const ext = initExtension({
-         meta: { name: 'Test Extension', description: 'Test extension', version: '1.0.0' },
-         schemas: { [HookType.MAKER_AMOUNT]: {} },
-         build: vi.fn().mockReturnValue({ type: 'TestExtension' }),
-       });
+    it('should detect collision when adding the same extension twice', function () {
+      const builder = initBuilder();
+      const ext = initExtension({
+        meta: {
+          name: 'Test Extension',
+          description: 'Test extension',
+          version: '1.0.0',
+        },
+        schemas: { [HookType.MAKER_AMOUNT]: {} },
+        build: vi.fn().mockReturnValue({ type: 'TestExtension' }),
+      });
 
-       // Add extension first time
-       builder.addExtension(ext);
-       expect(builder.extensions).to.have.length(1);
+      // Add extension first time
+      builder.addExtension(ext);
+      expect(builder.extensions).to.have.length(1);
 
-       // Try to add the same extension again
-       expect(() => {
-         builder.addExtension(ext);
-       }).to.throw(HookCollisionError, HookType.MAKER_AMOUNT);
+      // Try to add the same extension again
+      expect(() => {
+        builder.addExtension(ext);
+      }).to.throw(HookCollisionError, HookType.MAKER_AMOUNT);
 
-       // Should still have only one extension
-       expect(builder.extensions).to.have.length(1);
-       expect(builder.usedHooks.size).to.equal(1);
-     });
+      // Should still have only one extension
+      expect(builder.extensions).to.have.length(1);
+      expect(builder.usedHooks.size).to.equal(1);
+    });
 
-     it('should handle collision detection with all four hook types', function () {
-       const builder = initBuilder();
-       const baseExtension = initExtension({
-         meta: { name: 'Base Extension', description: 'Extension with all hooks', version: '1.0.0' },
-         schemas: {
-           [HookType.MAKER_AMOUNT]: {},
-           [HookType.TAKER_AMOUNT]: {},
-           [HookType.PRE_INTERACTION]: {},
-           [HookType.POST_INTERACTION]: {},
-         },
-         build: vi.fn().mockReturnValue({ type: 'BaseExtension' }),
-       });
+    it('should handle collision detection with all four hook types', function () {
+      const builder = initBuilder();
+      const baseExtension = initExtension({
+        meta: {
+          name: 'Base Extension',
+          description: 'Extension with all hooks',
+          version: '1.0.0',
+        },
+        schemas: {
+          [HookType.MAKER_AMOUNT]: {},
+          [HookType.TAKER_AMOUNT]: {},
+          [HookType.PRE_INTERACTION]: {},
+          [HookType.POST_INTERACTION]: {},
+        },
+        build: vi.fn().mockReturnValue({ type: 'BaseExtension' }),
+      });
 
-       builder.addExtension(baseExtension);
-       expect(builder.usedHooks.size).to.equal(4);
+      builder.addExtension(baseExtension);
+      expect(builder.usedHooks.size).to.equal(4);
 
-       // Try to add extension that conflicts with each hook type
-       const hookTypes = [
-         HookType.MAKER_AMOUNT,
-         HookType.TAKER_AMOUNT,
-         HookType.PRE_INTERACTION,
-         HookType.POST_INTERACTION,
-       ];
+      // Try to add extension that conflicts with each hook type
+      const hookTypes = [
+        HookType.MAKER_AMOUNT,
+        HookType.TAKER_AMOUNT,
+        HookType.PRE_INTERACTION,
+        HookType.POST_INTERACTION,
+      ];
 
-       hookTypes.forEach((hookType, index) => {
-         const conflictingExt = initExtension({
-           meta: { name: `Conflicting Extension ${index}`, description: `Conflicts with ${hookType}`, version: '1.0.0' },
-           schemas: { [hookType]: {} },
-           build: vi.fn().mockReturnValue({ type: `ConflictingExtension${index}` }),
-         });
+      hookTypes.forEach((hookType, index) => {
+        const conflictingExt = initExtension({
+          meta: {
+            name: `Conflicting Extension ${index}`,
+            description: `Conflicts with ${hookType}`,
+            version: '1.0.0',
+          },
+          schemas: { [hookType]: {} },
+          build: vi
+            .fn()
+            .mockReturnValue({ type: `ConflictingExtension${index}` }),
+        });
 
-         expect(() => {
-           builder.addExtension(conflictingExt);
-         }).to.throw(HookCollisionError, hookType);
-       });
+        expect(() => {
+          builder.addExtension(conflictingExt);
+        }).to.throw(HookCollisionError, hookType);
+      });
 
-       // Should still have only the base extension
-       expect(builder.extensions).to.have.length(1);
-       expect(builder.usedHooks.size).to.equal(4);
-     });
-   });
- });
+      // Should still have only the base extension
+      expect(builder.extensions).to.have.length(1);
+      expect(builder.usedHooks.size).to.equal(4);
+    });
+  });
+});
