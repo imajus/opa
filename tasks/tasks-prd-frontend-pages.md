@@ -29,7 +29,7 @@
 
 ## Tasks
 
-- [ ] 1.0 **Project Setup & Builder Integration**
+- [x] 1.0 **Project Setup & Builder Integration**
   - [x] 1.2 Update `frontend/package.json` to include builder dependency: `"builder": "file:../builder"`
   - [x] 1.3 Configure Next.js to handle the builder package imports in `next.config.mjs`
   - [x] 1.4 Update TailwindCSS config with orange (#F97316) and green (#10B981) theme colors
@@ -37,12 +37,12 @@
   - [x] 1.6 Create utility modules for order building, extension management, and URL parameter encoding
 
 - [ ] 2.0 **Landing Page Implementation**
-  - [ ] 2.1 Create `frontend/app/page.js` with project logo, name "OPA" (extra-large), and multi-sentence description in the middle of the page
-  - [ ] 2.2 Add primary CTA button "Build a Strategy" linking to `/strategy` page
-  - [ ] 2.3 Add secondary CTA link to GitHub repository (opens in new tab)
-  - [ ] 2.4 Style landing page with TailwindCSS using orange/green theme
-  - [ ] 2.5 Ensure responsive design for mobile (sm) and desktop (lg) breakpoints
-  - [ ] 2.6 Add `frontend/public/landing-logo.png` logo image on the left from the "OPA" text
+  - [x] 2.1 Create `frontend/app/page.js` with project logo, name "OPA" (extra-large), and multi-sentence description in the middle of the page
+  - [x] 2.2 Add primary CTA button "Build a Strategy" linking to `/strategy` page
+  - [x] 2.3 Add secondary CTA link to GitHub repository (opens in new tab)
+  - [x] 2.4 Style landing page with TailwindCSS using orange/green theme
+  - [x] 2.5 Ensure responsive design for mobile (sm) and desktop (lg) breakpoints
+  - [x] 2.6 Add `frontend/public/landing-logo.png` logo image on the left from the "OPA" text
 
 - [ ] 3.0 **Strategy Builder Page Implementation**
   - [ ] 3.1 Create `frontend/app/strategy/page.js` with extension selection interface
