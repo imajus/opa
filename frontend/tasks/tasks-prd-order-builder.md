@@ -24,11 +24,11 @@
     - [x] 2.5.3 Signs typed data with the supplied signer (EOA only).
     - [x] 2.5.4 Returns `{ order, orderHash, signature }` serialisable object.
 
-- [ ] 4.0 Type Declarations & Documentation
+- [x] 4.0 Type Declarations & Documentation
   - [x] 4.1 Add comprehensive JSDoc to all public methods and typedefs.
   - [x] 4.3 Write `docs/OrderBuilder.md` including quick-start and advanced usage with extensions.
 
-- [ ] 5.0 Testing & Verification
-  - [ ] 5.1 Write unit tests for basic build & sign workflow without extensions.
-  - [ ] 5.2 Write tests verifying multiple wrappers with non-overlapping hooks succeed.
-  - [ ] 5.3 Write tests asserting collision detection throws when hooks overlap.
+- [x] 5.0 Testing & Verification
+  - [x] 5.1 Write unit tests for basic build & sign workflow without extensions.
+  - [x] 5.2 Write tests verifying multiple wrappers with non-overlapping hooks succeed.
+  - [x] 5.3 Write tests asserting collision detection throws when hooks overlap.
