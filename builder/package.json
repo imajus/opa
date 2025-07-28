@@ -1,0 +1,31 @@
+{
+  "name": "opa-builder",
+  "version": "1.0.0",
+  "description": "Order builder for 1inch Limit Order Protocol",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "vitest run",
+    "test:debug": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/ test/"
+  },
+  "dependencies": {
+    "@1inch/limit-order-sdk": "^5.0.4-rc.0",
+    "ethers": "^6.15.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "vitest": "^1.0.0"
+  },
+  "keywords": [
+    "1inch",
+    "limit-order-protocol",
+    "extensions",
+    "defi",
+    "ethereum"
+  ],
+  "author": "Denis Perov <denis.perov@gmail.com>",
+  "license": "ISC"
+}
