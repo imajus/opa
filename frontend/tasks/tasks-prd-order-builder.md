@@ -9,20 +9,20 @@
 
 ## Tasks
 
-- [ ] 1.0 Project Setup & Tooling
+- [x] 1.0 Project Setup & Tooling
   - [x] 1.1 Add runtime dependencies: `@1inch/limit-order-sdk`, `ethers@^6`.
   - [x] 1.2 Add dev dependencies: `vitest`.
 
-- [ ] 2.0 Core OrderBuilder Implementation
-  - [ ] 2.1 Create `src/order-builder.js` skeleton (constructor accepting maker/taker params & receiver).
-  - [ ] 2.2 Implement internal `MakerTraits` instance and expose via `getMakerTraits()`.
-  - [ ] 2.3 Add `addExtension(wrapper)` with storage for wrappers.
-  - [ ] 2.4 Implement hook-collision detection (throw `HookCollisionError`).
-  - [ ] 2.5 Implement `build(signer)` that:
-    - [ ] 2.5.1 Constructs `LimitOrder` with provided params and combined extension.
-    - [ ] 2.5.2 Computes order hash.
-    - [ ] 2.5.3 Signs typed data with the supplied signer (EOA only).
-    - [ ] 2.5.4 Returns `{ order, orderHash, signature }` serialisable object.
+- [x] 2.0 Core OrderBuilder Implementation
+  - [x] 2.1 Create `src/order-builder.js` skeleton (constructor accepting maker/taker params & receiver).
+  - [x] 2.2 Implement internal `MakerTraits` instance and expose via `getMakerTraits()`.
+  - [x] 2.3 Add `addExtension(wrapper)` with storage for wrappers.
+  - [x] 2.4 Implement hook-collision detection (throw `HookCollisionError`).
+  - [x] 2.5 Implement `build(signer)` that:
+    - [x] 2.5.1 Constructs `LimitOrder` with provided params and combined extension.
+    - [x] 2.5.2 Computes order hash.
+    - [x] 2.5.3 Signs typed data with the supplied signer (EOA only).
+    - [x] 2.5.4 Returns `{ order, orderHash, signature }` serialisable object.
 
 - [ ] 4.0 Type Declarations & Documentation
   - [ ] 4.1 Add comprehensive JSDoc to all public methods and typedefs.
