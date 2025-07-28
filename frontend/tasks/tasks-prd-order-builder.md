@@ -25,8 +25,8 @@
     - [x] 2.5.4 Returns `{ order, orderHash, signature }` serialisable object.
 
 - [ ] 4.0 Type Declarations & Documentation
-  - [ ] 4.1 Add comprehensive JSDoc to all public methods and typedefs.
-  - [ ] 4.3 Write `docs/OrderBuilder.md` including quick-start and advanced usage with extensions.
+  - [x] 4.1 Add comprehensive JSDoc to all public methods and typedefs.
+  - [x] 4.3 Write `docs/OrderBuilder.md` including quick-start and advanced usage with extensions.
 
 - [ ] 5.0 Testing & Verification
   - [ ] 5.1 Write unit tests for basic build & sign workflow without extensions.
