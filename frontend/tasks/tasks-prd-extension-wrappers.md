@@ -50,5 +50,5 @@ Work only in the `frontend` folder:
 - [x] 4.0 Unit testing & coverage
   - [x] 4.1 Write success-path tests asserting `build()` returns a valid SDK `Extension` instance for each wrapper.
 
-- [ ] 5.0 Documentation & packaging
-  - [ ] 5.1 Draft `docs/Extensions.md` with quick-start example
+- [x] 5.0 Documentation & packaging
+  - [x] 5.1 Draft `docs/Extensions.md` with quick-start example
