@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import dutchAuctionCalculator from '../../src/extensions/dutch-auction-calculator.js';
-import { HookType } from '../../src/constants.js';
+import dutchAuctionCalculator from '../../lib/extensions/dutch-auction-calculator.js';
+import { HookType } from '../../lib/constants.js';
 import { Extension } from '@1inch/limit-order-sdk';
 
 describe('Dutch Auction Calculator Extension Wrapper', function () {

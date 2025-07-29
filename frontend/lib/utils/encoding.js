@@ -30,15 +30,13 @@ export function encodeToBase64(data) {
 export function decodeFromBase64(encodedData) {
   try {
     // Restore URL-safe characters and padding
-    let base64 = encodedData
-      .replace(/-/g, '+')
-      .replace(/_/g, '/');
-    
+    let base64 = encodedData.replace(/-/g, '+').replace(/_/g, '/');
+
     // Add padding if needed
     while (base64.length % 4) {
       base64 += '=';
     }
-    
+
     const jsonString = atob(base64);
     return JSON.parse(jsonString);
   } catch (error) {
@@ -55,11 +53,11 @@ export function decodeFromBase64(encodedData) {
 export function encodeStrategy(strategy) {
   const strategyData = {
     extensions: strategy.extensions || [],
-    parameters: strategy.parameters || {},
+    // parameters: strategy.parameters || {},
     version: '1.0',
     timestamp: Date.now(),
   };
-  
+
   return encodeToBase64(strategyData);
 }
 
@@ -70,19 +68,19 @@ export function encodeStrategy(strategy) {
  */
 export function decodeStrategy(encodedStrategy) {
   const strategy = decodeFromBase64(encodedStrategy);
-  
+
   // Validate strategy structure
   if (!strategy.extensions || !Array.isArray(strategy.extensions)) {
     throw new Error('Invalid strategy format: missing extensions array');
   }
-  
-  if (!strategy.parameters || typeof strategy.parameters !== 'object') {
-    throw new Error('Invalid strategy format: missing parameters object');
-  }
-  
+
+  // if (!strategy.parameters || typeof strategy.parameters !== 'object') {
+  //   throw new Error('Invalid strategy format: missing parameters object');
+  // }
+
   return {
     extensions: strategy.extensions,
-    parameters: strategy.parameters,
+    // parameters: strategy.parameters,
     version: strategy.version || '1.0',
     timestamp: strategy.timestamp,
   };
@@ -93,15 +91,15 @@ export function decodeStrategy(encodedStrategy) {
  * @param {Object} orderData - Complete order data including signature
  * @returns {string} Encoded order string
  */
-export function encodeOrder(orderData) {
+export function encodeOrder({ order, signature, extension }) {
   const orderPayload = {
-    order: orderData.order,
-    signature: orderData.signature,
-    extensionData: orderData.extensionData || {},
+    order,
+    signature,
+    extension,
     version: '1.0',
     timestamp: Date.now(),
   };
-  
+
   return encodeToBase64(orderPayload);
 }
 
@@ -112,23 +110,17 @@ export function encodeOrder(orderData) {
  */
 export function decodeOrder(encodedOrder) {
   const orderData = decodeFromBase64(encodedOrder);
-  
+
   // Validate order structure
   if (!orderData.order || typeof orderData.order !== 'object') {
     throw new Error('Invalid order format: missing order object');
   }
-  
+
   if (!orderData.signature || typeof orderData.signature !== 'string') {
     throw new Error('Invalid order format: missing signature');
   }
-  
-  return {
-    order: orderData.order,
-    signature: orderData.signature,
-    extensionData: orderData.extensionData || {},
-    version: orderData.version || '1.0',
-    timestamp: orderData.timestamp,
-  };
+
+  return orderData;
 }
 
 /**
@@ -140,7 +132,7 @@ export function isValidEncodedParam(param) {
   if (!param || typeof param !== 'string') {
     return false;
   }
-  
+
   try {
     decodeFromBase64(param);
     return true;
@@ -157,7 +149,7 @@ export function isValidEncodedParam(param) {
  */
 export function createUrlWithParams(basePath, params) {
   const url = new URL(basePath, window.location.origin);
-  
+
   Object.entries(params).forEach(([key, value]) => {
     if (typeof value === 'object') {
       url.searchParams.set(key, encodeToBase64(value));
@@ -165,7 +157,7 @@ export function createUrlWithParams(basePath, params) {
       url.searchParams.set(key, value);
     }
   });
-  
+
   return url.toString();
 }
 
@@ -177,7 +169,7 @@ export function createUrlWithParams(basePath, params) {
 export function extractUrlParams(encodedParams = []) {
   const urlParams = new URLSearchParams(window.location.search);
   const params = {};
-  
+
   for (const [key, value] of urlParams.entries()) {
     if (encodedParams.includes(key)) {
       try {
@@ -190,6 +182,6 @@ export function extractUrlParams(encodedParams = []) {
       params[key] = value;
     }
   }
-  
+
   return params;
-} 
+}

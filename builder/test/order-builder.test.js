@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Extension } from '@1inch/limit-order-sdk';
-import { OrderBuilder, HookCollisionError } from '../src/order-builder.js';
-import { HookType } from '../src/constants.js';
+import { OrderBuilder, HookCollisionError } from '../lib/order-builder.js';
+import { HookType } from '../lib/constants.js';
 
 const validMakerAsset = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
 const validMakerAmount = '1000000';

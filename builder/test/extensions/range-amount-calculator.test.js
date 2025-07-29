@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import rangeAmountCalculator from '../../src/extensions/range-amount-calculator.js';
-import { HookType } from '../../src/constants.js';
+import rangeAmountCalculator from '../../lib/extensions/range-amount-calculator.js';
+import { HookType } from '../../lib/constants.js';
 import { Extension } from '@1inch/limit-order-sdk';
 
 describe('Range Amount Calculator Extension Wrapper', function () {

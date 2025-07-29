@@ -5,9 +5,11 @@ const nextConfig = {
     esmExternals: true,
   },
   // turbopack: {
-  //   root: '..',
+  //   // Set root to frontend directory to avoid scanning parent directories
+  //   root: '.',
   //   resolveAlias: {
-  //     'opa-builder': 'builder/src/index.js',
+  //     // Only resolve opa-builder when explicitly imported
+  //     'opa-builder': '../builder/src/index.js',
   //   },
   // },
 };

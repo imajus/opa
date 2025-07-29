@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import chainlinkCalculator from '../../src/extensions/chainlink-calculator.js';
-import { HookType } from '../../src/constants.js';
+import chainlinkCalculator from '../../lib/extensions/chainlink-single-calculator.js';
+import { HookType } from '../../lib/constants.js';
 import { Extension } from '@1inch/limit-order-sdk';
 
 describe('Chainlink Calculator Extension Wrapper', function () {
