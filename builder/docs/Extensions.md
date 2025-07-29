@@ -7,7 +7,7 @@ This package provides JavaScript wrappers for 1inch Limit Order Protocol extensi
 ### Installation
 
 ```
-npm install @1inch/limit-order-sdk zod
+npm install @1inch/limit-order-sdk
 ```
 
 ### Importing Extension Wrappers

@@ -1,4 +1,3 @@
-import humanizeString from 'humanize-string';
 import { extensions, Type } from 'opa-builder/lib';
 import { parseEther } from 'ethers';
 

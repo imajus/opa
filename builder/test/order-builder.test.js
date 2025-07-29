@@ -314,7 +314,7 @@ describe('OrderBuilder', function () {
       builder.addExtension(extension);
       const params = { testParam: 'value' };
       const result = builder._combineExtensions(params);
-      expect(extension.build).toHaveBeenCalledWith(params);
+      expect(extension.build).toHaveBeenCalledWith(params, undefined);
       expect(result).to.exist;
       expect(result).to.be.instanceOf(Extension);
       expect(result.makingAmountData).to.equal('0x1234');
@@ -344,8 +344,8 @@ describe('OrderBuilder', function () {
       builder.addExtension(extension2);
       const params = { testParam: 'value' };
       const result = builder._combineExtensions(params);
-      expect(extension1.build).toHaveBeenCalledWith(params);
-      expect(extension2.build).toHaveBeenCalledWith(params);
+      expect(extension1.build).toHaveBeenCalledWith(params, undefined);
+      expect(extension2.build).toHaveBeenCalledWith(params, undefined);
       expect(result).to.exist;
       expect(result).to.be.instanceOf(Extension);
       expect(result.makingAmountData).to.equal('0x1111');
