@@ -1,101 +1,252 @@
-import { extensions, HookType } from 'opa-builder';
+import humanizeString from 'humanize-string';
+import { extensions, z } from 'opa-builder';
 
 /**
- * Extension Management Utilities
- * Provides functions for managing extension selection and detecting conflicts
+ * Custom schema types from the builder package
+ * We'll try to detect these by examining their properties
  */
-
-/**
- * Available extension configurations with metadata
- */
-export const extensionConfigs = {
-  gasStation: {
-    name: 'Gas Station',
-    description: 'Enables gas payment in alternative tokens instead of ETH',
-    hookType: HookType.PRE_INTERACTION,
-    category: 'payment',
-    parameters: [
-      {
-        name: 'gasToken',
-        type: 'address',
-        required: true,
-        description: 'Token to pay gas fees with',
-      },
-      {
-        name: 'gasPrice',
-        type: 'uint256',
-        required: true,
-        description: 'Gas price in token units',
-      },
-    ],
+const CUSTOM_SCHEMA_PATTERNS = {
+  address: {
+    type: 'address',
+    detect: (schema) => {
+      // Address schemas have regex validation for 0x + 40 hex chars
+      return (
+        schema instanceof z.ZodString &&
+        schema._def.checks?.some(
+          (check) =>
+            check.kind === 'regex' &&
+            check.regex.source.includes('0x[a-fA-F0-9]{40}')
+        )
+      );
+    },
   },
-  chainlinkCalculator: {
-    name: 'Chainlink Calculator',
-    description: 'Dynamic pricing based on Chainlink price feeds',
-    hookType: HookType.MAKER_AMOUNT,
-    category: 'pricing',
-    parameters: [
-      {
-        name: 'priceFeed',
-        type: 'address',
-        required: true,
-        description: 'Chainlink price feed address',
-      },
-      {
-        name: 'baseAmount',
-        type: 'uint256',
-        required: true,
-        description: 'Base amount for calculation',
-      },
-    ],
+  uint256: {
+    type: 'uint256',
+    detect: (schema) => {
+      // uint256 schemas are strings with specific regex and refinement
+      return (
+        schema instanceof z.ZodString &&
+        schema._def.checks?.some(
+          (check) =>
+            check.kind === 'regex' && check.regex.source.includes('[0-9]+')
+        ) &&
+        schema._def.checks?.some((check) => check.kind === 'refine')
+      );
+    },
   },
-  dutchAuctionCalculator: {
-    name: 'Dutch Auction Calculator',
-    description: 'Time-based decreasing price auction mechanism',
-    hookType: HookType.TAKER_AMOUNT,
-    category: 'pricing',
-    parameters: [
-      {
-        name: 'startPrice',
-        type: 'uint256',
-        required: true,
-        description: 'Starting auction price',
-      },
-      {
-        name: 'endPrice',
-        type: 'uint256',
-        required: true,
-        description: 'Ending auction price',
-      },
-      {
-        name: 'duration',
-        type: 'uint256',
-        required: true,
-        description: 'Auction duration in seconds',
-      },
-    ],
+  bytes32: {
+    type: 'bytes32',
+    detect: (schema) => {
+      // bytes32 schemas have regex for 0x + 64 hex chars
+      return (
+        schema instanceof z.ZodString &&
+        schema._def.checks?.some(
+          (check) =>
+            check.kind === 'regex' &&
+            check.regex.source.includes('0x[a-fA-F0-9]{64}')
+        )
+      );
+    },
   },
-  rangeAmountCalculator: {
-    name: 'Range Amount Calculator',
-    description: 'Allows flexible amount ranges for partial fills',
-    hookType: HookType.MAKER_AMOUNT,
-    category: 'amount',
-    parameters: [
-      {
-        name: 'minAmount',
-        type: 'uint256',
-        required: true,
-        description: 'Minimum fill amount',
-      },
-      {
-        name: 'maxAmount',
-        type: 'uint256',
-        required: true,
-        description: 'Maximum fill amount',
-      },
-    ],
+  bytes: {
+    type: 'bytes',
+    detect: (schema) => {
+      // bytes schemas have regex for 0x + even hex chars
+      return (
+        schema instanceof z.ZodString &&
+        schema._def.checks?.some(
+          (check) =>
+            check.kind === 'regex' &&
+            check.regex.source.includes('0x([a-fA-F0-9]{2})*')
+        )
+      );
+    },
+  },
+  timestamp: {
+    type: 'timestamp',
+    detect: (schema) => {
+      // timestamp is a union of number and transformed string
+      return (
+        schema instanceof z.ZodUnion &&
+        schema._def.options.some((option) => option instanceof z.ZodNumber) &&
+        schema._def.options.some(
+          (option) =>
+            option instanceof z.ZodEffects &&
+            option._def.schema instanceof z.ZodString
+        )
+      );
+    },
+  },
+  percentage: {
+    type: 'percentage',
+    detect: (schema) => {
+      // percentage is number with min 0, max 100
+      return (
+        schema instanceof z.ZodNumber &&
+        schema._def.checks?.some(
+          (check) => check.kind === 'min' && check.value === 0
+        ) &&
+        schema._def.checks?.some(
+          (check) => check.kind === 'max' && check.value === 100
+        )
+      );
+    },
+  },
+  basisPoints: {
+    type: 'basisPoints',
+    detect: (schema) => {
+      // basisPoints is int number with min 0, max 10000
+      return (
+        schema instanceof z.ZodNumber &&
+        schema._def.checks?.some((check) => check.kind === 'int') &&
+        schema._def.checks?.some(
+          (check) => check.kind === 'min' && check.value === 0
+        ) &&
+        schema._def.checks?.some(
+          (check) => check.kind === 'max' && check.value === 10000
+        )
+      );
+    },
   },
 };
+
+/**
+ * Extracts parameter information from a Zod schema
+ * @param {Object} schema - Zod schema object
+ * @returns {Array} Array of parameter objects
+ */
+function extractParametersFromSchema(schema) {
+  if (!schema) {
+    return [];
+  }
+
+  // Handle object schemas
+  if (schema instanceof z.ZodObject) {
+    const shape = schema._def.shape();
+    return Object.entries(shape).map(([key, fieldSchema]) => {
+      const description =
+        fieldSchema._def.description || `${humanizeString(key)} parameter`;
+      const type = getZodTypeString(fieldSchema);
+
+      return {
+        name: key,
+        type: type,
+        required: !fieldSchema.isOptional(),
+        description: description,
+        label: humanizeString(key),
+      };
+    });
+  }
+
+  // Handle union schemas (for complex configurations like chainlink)
+  if (schema instanceof z.ZodUnion) {
+    // For unions, we'll take parameters from all options
+    const allParameters = [];
+    const options = schema._def.options;
+
+    for (const option of options) {
+      const optionParams = extractParametersFromSchema(option);
+      allParameters.push(...optionParams);
+    }
+
+    // Remove duplicates based on name
+    const uniqueParams = allParameters.filter(
+      (param, index, self) =>
+        index === self.findIndex((p) => p.name === param.name)
+    );
+
+    return uniqueParams;
+  }
+
+  return [];
+}
+
+/**
+ * Converts Zod type to string representation
+ * @param {Object} schema - Zod schema
+ * @returns {string} Type string
+ */
+function getZodTypeString(schema) {
+  if (!schema) return 'unknown';
+
+  // First check for custom schema types
+  for (const [, customType] of Object.entries(CUSTOM_SCHEMA_PATTERNS)) {
+    if (customType.detect(schema)) {
+      return customType.type;
+    }
+  }
+
+  // Handle effects/transforms (like timestamp string transforms)
+  if (schema instanceof z.ZodEffects) {
+    return getZodTypeString(schema._def.schema);
+  }
+
+  // Handle basic Zod types using instanceof
+  if (schema instanceof z.ZodString) return 'string';
+  if (schema instanceof z.ZodNumber) return 'number';
+  if (schema instanceof z.ZodBoolean) return 'boolean';
+  if (schema instanceof z.ZodObject) return 'object';
+  if (schema instanceof z.ZodArray) return 'array';
+  if (schema instanceof z.ZodUnion) return 'union';
+  if (schema instanceof z.ZodLiteral) return 'literal';
+  if (schema instanceof z.ZodUndefined) return 'undefined';
+  if (schema instanceof z.ZodOptional)
+    return getZodTypeString(schema._def.innerType);
+  if (schema instanceof z.ZodDefault)
+    return getZodTypeString(schema._def.innerType);
+
+  // Fallback for unknown types
+  return 'unknown';
+}
+
+/**
+ * Auto-generates extension configurations from real extension data
+ * @returns {Object} Generated extension configurations
+ */
+function generateExtensionConfigs() {
+  const configs = {};
+
+  Object.entries(extensions).forEach(([extensionKey, extension]) => {
+    if (!extension.meta || !extension.schemas) {
+      return;
+    }
+
+    const { name, description } = extension.meta;
+    const hooks = {};
+    const allParameters = [];
+
+    // Process each hook and extract parameters
+    Object.entries(extension.schemas).forEach(([hookType, schema]) => {
+      hooks[hookType] = true;
+      // Skip undefined schemas
+      if (!schema || schema._def?.typeName === 'ZodUndefined') {
+        return;
+      }
+      const parameters = extractParametersFromSchema(schema);
+      allParameters.push(...parameters);
+    });
+
+    // Remove duplicate parameters
+    // const uniqueParameters = allParameters.filter(
+    //   (param, index, self) =>
+    //     index === self.findIndex((p) => p.name === param.name)
+    // );
+
+    configs[extensionKey] = {
+      name,
+      description,
+      hooks: Object.keys(hooks),
+      parameters: allParameters,
+    };
+  });
+
+  return configs;
+}
+
+/**
+ * Generated extension configurations based on real extension data
+ */
+export const extensionConfigs = generateExtensionConfigs();
 
 /**
  * Gets all available extensions
@@ -117,59 +268,72 @@ export function checkExtensionConflicts(selectedExtensions) {
   const conflicts = [];
   const warnings = [];
 
-  // Group extensions by category
-  const categoryGroups = {};
-  selectedExtensions.forEach((extensionId) => {
-    const config = extensionConfigs[extensionId];
-    if (config) {
-      const category = config.category;
-      if (!categoryGroups[category]) {
-        categoryGroups[category] = [];
-      }
-      categoryGroups[category].push(extensionId);
-    }
-  });
-
-  // Check for pricing conflicts (only one pricing extension allowed)
-  if (categoryGroups.pricing && categoryGroups.pricing.length > 1) {
-    conflicts.push({
-      type: 'category_conflict',
-      category: 'pricing',
-      extensions: categoryGroups.pricing,
-      message: 'Only one pricing extension can be selected at a time',
-    });
-  }
-
   // Check for hook type conflicts
   const hookTypeGroups = {};
   selectedExtensions.forEach((extensionId) => {
     const config = extensionConfigs[extensionId];
-    if (config) {
-      const hookType = config.hookType;
-      if (!hookTypeGroups[hookType]) {
-        hookTypeGroups[hookType] = [];
-      }
-      hookTypeGroups[hookType].push(extensionId);
-    }
-  });
-
-  // Warning for multiple extensions of same hook type
-  Object.entries(hookTypeGroups).forEach(([hookType, extensionList]) => {
-    if (extensionList.length > 1) {
-      warnings.push({
-        type: 'hook_type_warning',
-        hookType,
-        extensions: extensionList,
-        message: `Multiple extensions using ${hookType} hook type may have execution order dependencies`,
+    if (config && config.hooks) {
+      // Since hooks is now an array, we need to check each hook type
+      config.hooks.forEach((hookType) => {
+        if (!hookTypeGroups[hookType]) {
+          hookTypeGroups[hookType] = [];
+        }
+        hookTypeGroups[hookType].push(extensionId);
       });
     }
   });
 
+  // Warning for multiple extensions using the same hook type
+  Object.entries(hookTypeGroups).forEach(([hookType, extensionList]) => {
+    if (extensionList.length > 1) {
+      warnings.push({
+        type: 'hook_type_overlap',
+        hookType,
+        extensions: extensionList,
+        message: `Multiple extensions use the ${hookType} hook: ${extensionList.join(', ')}. This may cause unexpected behavior.`,
+      });
+    }
+  });
+
+  // Check for extension-specific conflicts
+  // Gas Station conflicts
+  if (selectedExtensions.includes('gasStation')) {
+    const conflictingExtensions = selectedExtensions.filter((id) =>
+      ['chainlinkCalculator', 'dutchAuctionCalculator'].includes(id)
+    );
+
+    if (conflictingExtensions.length > 0) {
+      conflicts.push({
+        type: 'gas_station_conflict',
+        extensions: ['gasStation', ...conflictingExtensions],
+        message:
+          'Gas Station cannot be used with pricing calculators that modify amounts',
+      });
+    }
+  }
+
+  // Check for multiple pricing extensions
+  const pricingExtensions = selectedExtensions.filter((id) =>
+    [
+      'chainlinkCalculator',
+      'dutchAuctionCalculator',
+      'rangeAmountCalculator',
+    ].includes(id)
+  );
+
+  if (pricingExtensions.length > 1) {
+    conflicts.push({
+      type: 'multiple_pricing',
+      extensions: pricingExtensions,
+      message:
+        'Only one pricing/amount calculation extension can be used at a time',
+    });
+  }
+
   return {
-    hasConflicts: conflicts.length > 0,
+    isValid: conflicts.length === 0,
     conflicts,
     warnings,
-    isValid: conflicts.length === 0,
   };
 }
 

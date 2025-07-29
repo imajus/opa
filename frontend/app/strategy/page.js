@@ -51,16 +51,6 @@ export default function StrategyPage() {
     });
   };
 
-  const handleParameterChange = (extensionId, paramName, value) => {
-    setExtensionParameters((prev) => ({
-      ...prev,
-      [extensionId]: {
-        ...prev[extensionId],
-        [paramName]: value,
-      },
-    }));
-  };
-
   const handleContinue = () => {
     if (!conflictAnalysis.isValid) {
       return; // Don't proceed if there are conflicts
@@ -75,13 +65,14 @@ export default function StrategyPage() {
     router.push(`/create?blueprint=${encodedStrategy}`);
   };
 
-  const getCategoryColor = (category) => {
+  const getHookTypeColor = (hookType) => {
     const colors = {
-      payment: 'bg-blue-100 text-blue-800',
-      pricing: 'bg-purple-100 text-purple-800',
-      amount: 'bg-green-100 text-green-800',
+      makerAmount: 'bg-purple-100 text-purple-800',
+      takerAmount: 'bg-blue-100 text-blue-800',
+      preInteraction: 'bg-green-100 text-green-800',
+      postInteraction: 'bg-orange-100 text-orange-800',
     };
-    return colors[category] || 'bg-gray-100 text-gray-800';
+    return colors[hookType] || 'bg-gray-100 text-gray-800';
   };
 
   return (
@@ -153,17 +144,22 @@ export default function StrategyPage() {
                       <h3 className="text-xl font-semibold text-gray-900">
                         {extension.name}
                       </h3>
-                      <span
-                        className={`px-2 py-1 text-xs rounded-full ${getCategoryColor(extension.category)}`}
-                      >
-                        {extension.category}
-                      </span>
                     </div>
                     <p className="text-gray-600 mb-3">
                       {extension.description}
                     </p>
                     <p className="text-sm text-gray-500">
-                      Hook Type: {extension.hookType}
+                      Hook Types:{' '}
+                      {extension.hooks && extension.hooks.length > 0
+                        ? extension.hooks.map((hook, idx) => (
+                            <span
+                              key={hook}
+                              className={`inline-block px-2 py-0.5 rounded mr-1 ${getHookTypeColor(hook)}`}
+                            >
+                              {hook}
+                            </span>
+                          ))
+                        : 'None'}
                     </p>
                   </div>
 
@@ -193,7 +189,7 @@ export default function StrategyPage() {
                 </div>
 
                 {/* Parameters Preview (Read-only) */}
-                {extension.parameters.length > 0 && (
+                {extension.parameters?.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <h4 className="text-sm font-medium text-gray-700 mb-3">
                       Required Parameters:
@@ -205,7 +201,7 @@ export default function StrategyPage() {
                           className="flex justify-between items-center text-sm"
                         >
                           <span className="text-gray-600">
-                            {param.name}
+                            {param.label || param.name}
                             {param.required && (
                               <span className="text-red-500 ml-1">*</span>
                             )}
@@ -240,9 +236,9 @@ export default function StrategyPage() {
                 return (
                   <span
                     key={extensionId}
-                    className={`px-3 py-1 rounded-full text-sm ${getCategoryColor(extension.category)}`}
+                    className="px-3 py-1 rounded-full text-sm bg-primary-orange text-white"
                   >
-                    {extension.name}
+                    {extension?.name}
                   </span>
                 );
               })}
