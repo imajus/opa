@@ -4,6 +4,7 @@
  * This package provides JavaScript wrappers for 1inch Limit Order Protocol extensions,
  * enabling easy creation and configuration of sophisticated trading strategies.
  */
+export { z } from 'zod';
 
 // Extension wrappers
 import gasStation from './extensions/gas-station.js';
@@ -21,8 +22,8 @@ export { HookType, ALL_HOOK_TYPES } from './constants.js';
  * All available extension wrappers
  */
 export const extensions = {
-  gasStation: gasStation,
-  chainlinkCalculator: chainlinkCalculator,
-  dutchAuctionCalculator: dutchAuctionCalculator,
-  rangeAmountCalculator: rangeAmountCalculator,
+  gasStation,
+  chainlinkCalculator,
+  dutchAuctionCalculator,
+  rangeAmountCalculator,
 };
