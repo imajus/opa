@@ -55,18 +55,18 @@
   - [x] 3.8 Add error handling for extension conflicts with user-friendly messages
 
 - [ ] 4.0 **Create Order Page Implementation**
-  - [ ] 4.1 Create `frontend/app/create/page.js` with order parameter form
-  - [ ] 4.2 Parse `blueprint` query parameter and initialize builder instance
-  - [ ] 4.3 Handle missing `blueprint` parameter by creating simple order with no extensions
-  - [ ] 4.4 Render editable fields for core order parameters: makerAsset, makerAmount, takerAsset, takerAmount, receiver
-  - [ ] 4.5 Add fields for order traits: expiration, nonce, partial/multiple fill flags
-  - [ ] 4.6 Dynamically render extension-specific parameter fields based on blueprint
-  - [ ] 4.7 Integrate RainbowKit wallet connection with chainId and account detection
-  - [ ] 4.8 Enforce wallet connection before allowing order signing
-  - [ ] 4.9 Implement ERC-20 permit mockup for maker asset approval
-  - [ ] 4.10 Call `builder.build(signer, params)` on "Review & Sign" button click
-  - [ ] 4.11 Navigate to `/fill?order=...` with base64-encoded result (order struct, signature, extension data)
-  - [ ] 4.12 Add form validation and error handling for invalid parameters
+  - [x] 4.1 Create `frontend/app/create/page.js` with order parameter form
+  - [x] 4.2 Parse `blueprint` query parameter and initialize builder instance
+  - [x] 4.3 Handle missing `blueprint` parameter by creating simple order with no extensions
+  - [x] 4.4 Render editable fields for core order parameters: makerAsset, makerAmount, takerAsset, takerAmount, receiver
+  - [x] 4.5 Add fields for order traits: expiration, nonce, partial/multiple fill flags
+  - [x] 4.6 Dynamically render extension-specific parameter fields based on blueprint
+  - [x] 4.7 Integrate RainbowKit wallet connection with chainId and account detection
+  - [x] 4.8 Enforce wallet connection before allowing order signing
+  - [x] 4.9 Implement ERC-20 permit mockup for maker asset approval
+  - [x] 4.10 Call `builder.build(signer, params)` on "Review & Sign" button click
+  - [x] 4.11 Navigate to `/fill?order=...` with base64-encoded result (order struct, signature, extension data)
+  - [x] 4.12 Add form validation and error handling for invalid parameters
 
 - [ ] 5.0 **Fill Order Page Implementation**
   - [ ] 5.1 Create `frontend/app/fill/page.js` with order summary and execution interface
