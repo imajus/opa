@@ -20,21 +20,11 @@ const gasStationWrapper = createWrapper({
   description:
     'Enables gasless trading where makers can trade stablecoins to WETH without owning ETH for gas fees',
   hooks: {
-    [HookType.MAKER_AMOUNT]: z
-      .object({})
-      .optional()
-      .describe('Uses dynamic calculation'),
-    [HookType.TAKER_AMOUNT]: z
-      .object({})
-      .optional()
-      .describe('Uses dynamic calculation'),
-    [HookType.PRE_INTERACTION]: z
-      .object({})
-      .optional()
-      .describe('Perform flash loan'),
+    [HookType.MAKER_AMOUNT]: z.undefined().describe('Uses dynamic calculation'),
+    [HookType.TAKER_AMOUNT]: z.undefined().describe('Uses dynamic calculation'),
+    [HookType.PRE_INTERACTION]: z.undefined().describe('Perform flash loan'),
     [HookType.POST_INTERACTION]: z
-      .object({})
-      .optional()
+      .undefined()
       .describe('Perform swap, and repayment'),
   },
   /**

@@ -109,8 +109,7 @@ const chainlinkCalculatorWrapper = createWrapper({
       'Oracle configuration for maker amount calculation'
     ),
     [HookType.TAKER_AMOUNT]: z
-      .object({})
-      .optional()
+      .undefined()
       .describe(
         'Maker amount configuration is used for taker amount calculation'
       ),

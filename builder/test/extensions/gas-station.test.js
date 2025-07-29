@@ -13,7 +13,7 @@ describe('Gas Station Extension Wrapper', function () {
       expect(errors).to.be.null;
     });
 
-    it('should accept any parameters since Gas Station uses static config', function () {
+    it('should not accept any parameters except undefined', function () {
       const anyConfig = {
         [HookType.MAKER_AMOUNT]: {},
         [HookType.TAKER_AMOUNT]: {},
@@ -21,23 +21,28 @@ describe('Gas Station Extension Wrapper', function () {
         [HookType.POST_INTERACTION]: {},
       };
       const errors = gasStation.validate(anyConfig);
-      expect(errors).to.be.null;
+      expect(errors)
+        .to.have.property('makerAmount')
+        .that.is.an('array')
+        .with.deep.nested.property('[0].code', 'invalid_type');
+      expect(errors)
+        .to.have.property('takerAmount')
+        .that.is.an('array')
+        .with.deep.nested.property('[0].code', 'invalid_type');
+      expect(errors)
+        .to.have.property('preInteraction')
+        .that.is.an('array')
+        .with.deep.nested.property('[0].code', 'invalid_type');
+      expect(errors)
+        .to.have.property('postInteraction')
+        .that.is.an('array')
+        .with.deep.nested.property('[0].code', 'invalid_type');
     });
   });
 
   describe('extension building', function () {
     it('should build a valid Extension instance', function () {
       const extension = gasStation.build(emptyConfig);
-      expect(extension).to.be.instanceOf(Extension);
-      expect(extension.makingAmountData).to.not.equal('0x');
-      expect(extension.takingAmountData).to.not.equal('0x');
-      expect(extension.preInteraction).to.not.equal('0x');
-      expect(extension.postInteraction).to.not.equal('0x');
-    });
-
-    it('should work with any parameters since configuration is static', function () {
-      const anyConfig = { [HookType.MAKER_AMOUNT]: { some: 'data' } };
-      const extension = gasStation.build(anyConfig);
       expect(extension).to.be.instanceOf(Extension);
       expect(extension.makingAmountData).to.not.equal('0x');
       expect(extension.takingAmountData).to.not.equal('0x');
