@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import gasStation from '../../src/extensions/gas-station.js';
-import { HookType } from '../../src/constants.js';
+import gasStation from '../../lib/extensions/gas-station.js';
+import { HookType } from '../../lib/constants.js';
 import { Extension } from '@1inch/limit-order-sdk';
 
 describe('Gas Station Extension Wrapper', function () {

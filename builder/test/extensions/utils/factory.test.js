@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { createWrapper } from '../../../src/extensions/utils/factory.js';
-import { address, uint256 } from '../../../src/schemas/common.js';
+import { createWrapper } from '../../../lib/extensions/utils/factory.js';
+import { address, uint256 } from '../../../lib/schemas/common.js';
 
 describe('Factory Utils', function () {
   describe('createWrapper', function () {

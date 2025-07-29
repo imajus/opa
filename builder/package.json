@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Order builder for 1inch Limit Order Protocol",
   "type": "module",
-  "main": "src/index.js",
+  "main": "lib/index.js",
   "scripts": {
     "test": "vitest run",
     "test:debug": "vitest",

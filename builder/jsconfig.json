@@ -10,10 +10,10 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
+      "@/*": ["lib/*"],
       "@test/*": ["test/*"]
     }
   },
-  "include": ["types.d.ts", "src/**/*", "test/**/*"],
+  "include": ["types.d.ts", "lib/**/*", "test/**/*"],
   "exclude": ["node_modules", "dist", "coverage"]
 }

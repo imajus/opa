@@ -7,13 +7,15 @@ import {
   getAvailableExtensions,
   checkExtensionConflicts,
   getExtensionConfig,
+  flatExtensionConfigParams,
+  getSchemaTypeName,
 } from '../../lib/utils/extensions';
 import { encodeStrategy } from '../../lib/utils/encoding';
 
 export default function StrategyPage() {
   const router = useRouter();
   const [selectedExtensions, setSelectedExtensions] = useState([]);
-  const [extensionParameters, setExtensionParameters] = useState({});
+  // const [extensionParameters, setExtensionParameters] = useState({});
   const [conflictAnalysis, setConflictAnalysis] = useState({
     isValid: true,
     conflicts: [],
@@ -31,21 +33,18 @@ export default function StrategyPage() {
     setSelectedExtensions((prev) => {
       if (prev.includes(extensionId)) {
         // Remove extension and its parameters
-        const newParams = { ...extensionParameters };
-        delete newParams[extensionId];
-        setExtensionParameters(newParams);
-        return prev.filter((id) => id !== extensionId);
+        // const newParams = { ...extensionParameters };
+        // delete newParams[extensionId];
+        // setExtensionParameters(newParams);
+        // return prev.filter((id) => id !== extensionId);
       } else {
         // Add extension and initialize its parameters
-        const config = getExtensionConfig(extensionId);
-        const defaultParams = {};
-        config.parameters.forEach((param) => {
-          defaultParams[param.name] = '';
-        });
-        setExtensionParameters((prev) => ({
-          ...prev,
-          [extensionId]: defaultParams,
-        }));
+        // const config = getExtensionConfig(extensionId);
+        // const defaultParams = config.hooks.map(({ params }) => params).flat();
+        // setExtensionParameters((prev) => ({
+        //   ...prev,
+        //   [extensionId]: defaultParams,
+        // }));
         return [...prev, extensionId];
       }
     });
@@ -58,7 +57,7 @@ export default function StrategyPage() {
 
     const strategy = {
       extensions: selectedExtensions,
-      parameters: extensionParameters,
+      // parameters: extensionParameters,
     };
 
     const encodedStrategy = encodeStrategy(strategy);
@@ -112,7 +111,7 @@ export default function StrategyPage() {
           </div>
         )}
 
-        {conflictAnalysis.warnings.length > 0 && (
+        {/* {conflictAnalysis.warnings.length > 0 && (
           <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <h3 className="text-yellow-800 font-semibold mb-2">⚠️ Warnings</h3>
             {conflictAnalysis.warnings.map((warning, index) => (
@@ -121,13 +120,13 @@ export default function StrategyPage() {
               </p>
             ))}
           </div>
-        )}
+        )} */}
 
         {/* Extension Selection Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {availableExtensions.map((extension) => {
             const isSelected = selectedExtensions.includes(extension.id);
-
+            const extensionParams = flatExtensionConfigParams(extension);
             return (
               <div
                 key={extension.id}
@@ -151,12 +150,12 @@ export default function StrategyPage() {
                     <p className="text-sm text-gray-500">
                       Hook Types:{' '}
                       {extension.hooks && extension.hooks.length > 0
-                        ? extension.hooks.map((hook, idx) => (
+                        ? extension.hooks.map((hook) => (
                             <span
-                              key={hook}
-                              className={`inline-block px-2 py-0.5 rounded mr-1 ${getHookTypeColor(hook)}`}
+                              key={hook.type}
+                              className={`inline-block px-2 py-0.5 rounded mr-1 ${getHookTypeColor(hook.type)}`}
                             >
-                              {hook}
+                              {hook.type}
                             </span>
                           ))
                         : 'None'}
@@ -189,13 +188,13 @@ export default function StrategyPage() {
                 </div>
 
                 {/* Parameters Preview (Read-only) */}
-                {extension.parameters?.length > 0 && (
+                {extensionParams.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <h4 className="text-sm font-medium text-gray-700 mb-3">
                       Required Parameters:
                     </h4>
                     <div className="space-y-2">
-                      {extension.parameters.map((param) => (
+                      {extensionParams.map((param) => (
                         <div
                           key={param.name}
                           className="flex justify-between items-center text-sm"
@@ -207,7 +206,7 @@ export default function StrategyPage() {
                             )}
                           </span>
                           <span className="text-gray-500 font-mono text-xs">
-                            {param.type}
+                            {getSchemaTypeName(param.type)}
                           </span>
                         </div>
                       ))}
@@ -230,9 +229,7 @@ export default function StrategyPage() {
             </h3>
             <div className="flex flex-wrap gap-2">
               {selectedExtensions.map((extensionId) => {
-                const extension = availableExtensions.find(
-                  (ext) => ext.id === extensionId
-                );
+                const extension = getExtensionConfig(extensionId);
                 return (
                   <span
                     key={extensionId}
