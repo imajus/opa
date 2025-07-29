@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { z } from 'zod';
-import { createWrapper } from '../../../lib/extensions/utils/factory.js';
-import { address, uint256 } from '../../../lib/schemas/common.js';
+import {
+  createWrapper,
+  createSchema,
+} from '../../../lib/extensions/utils/factory.js';
+import { address, uint256 } from '../../../lib/extensions/utils/types.js';
 
 describe('Factory Utils', function () {
   describe('createWrapper', function () {
@@ -9,13 +11,17 @@ describe('Factory Utils', function () {
       name: 'testExtension',
       description: 'Test extension for validation',
       hooks: {
-        makerAmount: z.object({
-          minAmount: uint256,
-          maxAmount: uint256,
+        makerAmount: createSchema({
+          fields: {
+            minAmount: { type: uint256 },
+            maxAmount: { type: uint256 },
+          },
         }),
-        preInteraction: z.object({
-          target: address,
-          data: z.string(),
+        preInteraction: createSchema({
+          fields: {
+            target: { type: address },
+            data: { type: { validate: () => {}, parse: (v) => v } },
+          },
         }),
       },
       build: (params) => ({ type: 'Extension', params }),
@@ -29,6 +35,7 @@ describe('Factory Utils', function () {
       expect(wrapper).to.have.property('build');
       expect(wrapper).to.have.property('validate');
     });
+
     it('should have correct meta information', function () {
       const wrapper = createWrapper(validConfig);
 
@@ -38,6 +45,7 @@ describe('Factory Utils', function () {
         version: '1.0.0',
       });
     });
+
     it('should expose hook schemas correctly', function () {
       const wrapper = createWrapper(validConfig);
 
@@ -45,6 +53,7 @@ describe('Factory Utils', function () {
       expect(wrapper.schemas).to.have.property('preInteraction');
       expect(Object.keys(wrapper.schemas)).to.have.length(2);
     });
+
     it('should validate parameters correctly', function () {
       const wrapper = createWrapper(validConfig);
       const validParams = {
@@ -61,6 +70,7 @@ describe('Factory Utils', function () {
 
       expect(errors).to.be.null;
     });
+
     it('should return validation errors for invalid parameters', function () {
       const wrapper = createWrapper(validConfig);
       const invalidParams = {
@@ -79,6 +89,7 @@ describe('Factory Utils', function () {
       expect(errors).to.have.property('makerAmount');
       expect(errors).to.have.property('preInteraction');
     });
+
     it('should build extension with validated parameters', function () {
       const wrapper = createWrapper(validConfig);
       const params = {
@@ -93,6 +104,7 @@ describe('Factory Utils', function () {
       expect(extension).to.have.property('params');
       expect(extension.params).to.have.property('makerAmount');
     });
+
     it('should throw on invalid build parameters', function () {
       const wrapper = createWrapper(validConfig);
       const invalidParams = {
@@ -104,6 +116,7 @@ describe('Factory Utils', function () {
 
       expect(() => wrapper.build(invalidParams)).to.throw();
     });
+
     it('should handle empty parameters gracefully', function () {
       const wrapper = createWrapper(validConfig);
       const extension = wrapper.build({});
@@ -111,6 +124,7 @@ describe('Factory Utils', function () {
       expect(extension).to.have.property('type', 'Extension');
       expect(extension.params).to.deep.equal({});
     });
+
     it('should reject invalid wrapper configuration', function () {
       const invalidConfigs = [
         { name: '', description: 'test', hooks: {}, build: () => {} },
@@ -123,16 +137,27 @@ describe('Factory Utils', function () {
         expect(() => createWrapper(config)).to.throw();
       });
     });
+
     it('should handle complex nested validation', function () {
       const complexConfig = {
         name: 'complexExtension',
         description: 'Complex validation test',
         hooks: {
-          makerAmount: z.object({
-            config: z.object({
-              addresses: z.array(address),
-              amounts: z.array(uint256),
-            }),
+          makerAmount: createSchema({
+            fields: {
+              config: {
+                type: {
+                  validate(value) {
+                    if (!value.addresses || !value.amounts) {
+                      throw new Error('Missing addresses or amounts');
+                    }
+                    value.addresses.forEach((addr) => address.validate(addr));
+                    value.amounts.forEach((amount) => uint256.validate(amount));
+                  },
+                  parse: (value) => value,
+                },
+              },
+            },
           }),
         },
         build: (params) => params,

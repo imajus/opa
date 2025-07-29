@@ -21,22 +21,18 @@ describe('Gas Station Extension Wrapper', function () {
         [HookType.POST_INTERACTION]: {},
       };
       const errors = gasStation.validate(anyConfig);
-      expect(errors)
-        .to.have.property('makerAmount')
-        .that.is.an('array')
-        .with.deep.nested.property('[0].code', 'invalid_type');
-      expect(errors)
-        .to.have.property('takerAmount')
-        .that.is.an('array')
-        .with.deep.nested.property('[0].code', 'invalid_type');
-      expect(errors)
-        .to.have.property('preInteraction')
-        .that.is.an('array')
-        .with.deep.nested.property('[0].code', 'invalid_type');
-      expect(errors)
-        .to.have.property('postInteraction')
-        .that.is.an('array')
-        .with.deep.nested.property('[0].code', 'invalid_type');
+      expect(errors).to.not.be.null;
+      expect(errors).to.have.property('makerAmount');
+      expect(errors.makerAmount).to.be.instanceOf(Error);
+      expect(errors.makerAmount.message).to.include(
+        'does not accept any parameters'
+      );
+      expect(errors).to.have.property('takerAmount');
+      expect(errors.takerAmount).to.be.instanceOf(Error);
+      expect(errors).to.have.property('preInteraction');
+      expect(errors.preInteraction).to.be.instanceOf(Error);
+      expect(errors).to.have.property('postInteraction');
+      expect(errors.postInteraction).to.be.instanceOf(Error);
     });
   });
 
