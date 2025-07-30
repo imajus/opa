@@ -240,8 +240,6 @@ export default function CreateOrderPage() {
         signature: result.signature,
         // orderHash: result.orderHash,
         extension: result.extension,
-        // extensionParameters,
-        // selectedExtensions,
       };
       // Encode order data for URL
       const encodedOrder = encodeOrder(orderData);
