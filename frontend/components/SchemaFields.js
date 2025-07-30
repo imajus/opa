@@ -83,9 +83,10 @@ export const Uint256Field = ({ value, onChange, placeholder, required }) => {
 };
 
 /**
- * Maker token amount field component - accepts integer/floating point without conversion
+ * Token amount field component - accepts integer/floating point without conversion
+ * Can be used for both maker and taker token amounts
  */
-export const MakerTokenAmountField = ({
+export const TokenAmountField = ({
   value,
   onChange,
   placeholder,
@@ -130,67 +131,7 @@ export const MakerTokenAmountField = ({
         type="text"
         value={value}
         onChange={handleChange}
-        placeholder={placeholder || 'Maker token amount (e.g. 1.5)'}
-        className={`${baseInputClassName} ${error ? 'border-red-500' : ''}`}
-        required={required}
-      />
-      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-      <p className="text-xs text-gray-400 mt-1">
-        Enter numeric amount (stored as entered)
-      </p>
-    </div>
-  );
-};
-
-/**
- * Taker token amount field component - accepts integer/floating point without conversion
- */
-export const TakerTokenAmountField = ({
-  value,
-  onChange,
-  placeholder,
-  required,
-}) => {
-  const [error, setError] = useState('');
-
-  const validateNumericAmount = (val) => {
-    if (!val) return '';
-
-    // Allow decimal numbers
-    if (!/^\d*\.?\d*$/.test(val)) {
-      return 'Must be a valid number';
-    }
-
-    if (val === '.' || val === '') return '';
-
-    try {
-      const num = parseFloat(val);
-      if (num < 0) {
-        return 'Amount must be non-negative';
-      }
-    } catch {
-      return 'Invalid number format';
-    }
-
-    return '';
-  };
-
-  const handleChange = (e) => {
-    const newValue = e.target.value;
-    const validationError = validateNumericAmount(newValue);
-    setError(validationError);
-
-    // Store value as-is without conversion
-    onChange(newValue);
-  };
-
-  return (
-    <div>
-      <input
-        type="text"
-        value={value}
-        onChange={handleChange}
-        placeholder={placeholder || 'Taker token amount (e.g. 1.5)'}
+        placeholder={placeholder || 'Token amount (e.g. 1.5)'}
         className={`${baseInputClassName} ${error ? 'border-red-500' : ''}`}
         required={required}
       />
@@ -395,6 +336,7 @@ export const getFieldComponent = (type) => {
   if (type === Type.uint256) return Uint256Field;
   if (type === Type.boolean) return BooleanField;
   if (type === Type.timestamp) return TimestampField;
-  if (type === Type.takerTokenAmount) return TakerTokenAmountField;
+  if (type === Type.makerTokenAmount) return TokenAmountField;
+  if (type === Type.takerTokenAmount) return TokenAmountField;
   return GenericField;
 };

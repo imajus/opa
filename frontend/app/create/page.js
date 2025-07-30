@@ -25,8 +25,7 @@ import {
 } from '../../lib/utils/extensions';
 import {
   getFieldComponent,
-  MakerTokenAmountField,
-  TakerTokenAmountField,
+  TokenAmountField,
 } from '../../components/SchemaFields';
 
 export default function CreateOrderPage() {
@@ -424,7 +423,7 @@ export default function CreateOrderPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Maker Amount *
                 </label>
-                <MakerTokenAmountField
+                <TokenAmountField
                   value={orderParams.makerAmount}
                   onChange={(value) => handleParamChange('makerAmount', value)}
                   placeholder="Amount to sell (e.g. 1.5)"
@@ -461,7 +460,7 @@ export default function CreateOrderPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Taker Amount *
                 </label>
-                <TakerTokenAmountField
+                <TokenAmountField
                   value={orderParams.takerAmount}
                   onChange={(value) => handleParamChange('takerAmount', value)}
                   placeholder="Amount to receive (e.g. 1.5)"

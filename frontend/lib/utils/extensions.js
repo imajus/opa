@@ -17,6 +17,7 @@ export function getSchemaTypeName(type) {
   if (type === Type.uint256) return 'Integer';
   if (type === Type.timestamp) return 'Date & Time';
   if (type === Type.boolean) return 'Boolean';
+  if (type === Type.makerTokenAmount) return 'Maker Token Amount';
   if (type === Type.takerTokenAmount) return 'Taker Token Amount';
   return 'unknown';
 }
