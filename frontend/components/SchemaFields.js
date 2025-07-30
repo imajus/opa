@@ -243,26 +243,6 @@ export const BooleanField = ({ value, onChange, placeholder, required }) => {
  * Timestamp field component with date/time picker
  */
 export const TimestampField = ({ value, onChange, placeholder, required }) => {
-  const [error, setError] = useState('');
-
-  const validateTimestamp = (val) => {
-    if (!val) return '';
-    if (!/^[0-9]+$/.test(val)) {
-      return 'Must be a valid Unix timestamp (numbers only)';
-    }
-    const num = Number(val);
-    if (num < 0) {
-      return 'Timestamp must be non-negative';
-    }
-    return '';
-  };
-
-  const handleChange = (e) => {
-    const newValue = e.target.value;
-    onChange(newValue);
-    setError(validateTimestamp(newValue));
-  };
-
   const handleDateTimeChange = (e) => {
     const dateValue = e.target.value;
     if (dateValue) {
@@ -270,7 +250,6 @@ export const TimestampField = ({ value, onChange, placeholder, required }) => {
         new Date(dateValue).getTime() / 1000
       ).toString();
       onChange(timestamp);
-      setError('');
     }
   };
 
@@ -278,36 +257,25 @@ export const TimestampField = ({ value, onChange, placeholder, required }) => {
     if (!value || !/^[0-9]+$/.test(value)) return '';
     try {
       const date = new Date(Number(value) * 1000);
-      return date.toISOString().slice(0, 16); // Format for datetime-local input
+      // Adjust for local timezone to display correctly in datetime-local input
+      const offsetMs = date.getTimezoneOffset() * 60 * 1000;
+      const localDate = new Date(date.getTime() - offsetMs);
+      return localDate.toISOString().slice(0, 16);
     } catch {
       return '';
     }
   };
 
   return (
-    <div className="space-y-2">
-      <div>
-        <input
-          type="text"
-          value={value}
-          onChange={handleChange}
-          placeholder={placeholder || 'Unix timestamp'}
-          className={`${baseInputClassName} ${error ? 'border-red-500' : ''}`}
-          required={required}
-        />
-        {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-      </div>
-      <div>
-        <label className="block text-xs text-gray-500 mb-1">
-          Or pick date/time:
-        </label>
-        <input
-          type="datetime-local"
-          value={getDateTimeValue()}
-          onChange={handleDateTimeChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent text-gray-900 text-sm"
-        />
-      </div>
+    <div>
+      <input
+        type="datetime-local"
+        value={getDateTimeValue()}
+        onChange={handleDateTimeChange}
+        placeholder={placeholder}
+        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent text-gray-900"
+        required={required}
+      />
     </div>
   );
 };
