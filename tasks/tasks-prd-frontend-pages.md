@@ -15,6 +15,7 @@
 - `frontend/lib/utils/orderBuilder.js` - Utility functions for order building and serialization
 - `frontend/lib/utils/extensions.js` - Extension management and collision detection utilities
 - `frontend/lib/utils/encoding.js` - Base64 encoding/decoding utilities for URL parameters
+- `frontend/lib/utils/orderDisplay.js` - Order formatting utilities for UI display with token symbol mapping
 - `frontend/components/ExtensionCard.js` - Reusable component for displaying extension information
 - `frontend/components/OrderForm.js` - Form component for order parameter input
 - `frontend/components/WalletConnection.js` - Wallet connection status and network switching
@@ -68,17 +69,17 @@
   - [x] 4.11 Navigate to `/fill?order=...` with base64-encoded result (order struct, signature, extension data)
   - [x] 4.12 Add form validation and error handling for invalid parameters
 
-- [ ] 5.0 **Fill Order Page Implementation**
-  - [ ] 5.1 Create `frontend/app/fill/page.js` with order summary and execution interface
-  - [ ] 5.2 Parse required `order` query parameter and display order summary
-  - [ ] 5.3 Show assets, amounts, and strategy description in readable format
-  - [ ] 5.4 Detect taker wallet network and allow network switching if necessary
-  - [ ] 5.5 Implement Step 1: "Approve [Token]" button for ERC-20 `approve()` transaction
-  - [ ] 5.6 Implement Step 2: "Fill Order" button for LOP `fillOrder()` transaction with serialized order data
-  - [ ] 5.7 Add transaction progress indicators and loading states
-  - [ ] 5.8 Display success confirmation with Etherscan transaction link
-  - [ ] 5.9 Handle missing `order` parameter with appropriate error message
-  - [ ] 5.10 Add error handling for failed transactions with user-friendly messages
+- [x] 5.0 **Fill Order Page Implementation**
+  - [x] 5.1 Create `frontend/app/fill/page.js` with order summary and execution interface
+  - [x] 5.2 Parse required `order` query parameter and display order summary
+  - [x] 5.3 Show assets, amounts, and strategy description in readable format
+  - [x] 5.4 Detect taker wallet network and allow network switching if necessary
+  - [x] 5.5 Implement Step 1: "Approve [Token]" button for ERC-20 `approve()` transaction
+  - [x] 5.6 Implement Step 2: "Fill Order" button for LOP `fillOrder()` transaction with serialized order data
+  - [x] 5.7 Add transaction progress indicators and loading states
+  - [x] 5.8 Display success confirmation with Etherscan transaction link
+  - [x] 5.9 Handle missing `order` parameter with appropriate error message
+  - [x] 5.10 Add error handling for failed transactions with user-friendly messages
 
 - [ ] 6.0 **Testing & Verification**
   - [ ] 6.1 Create unit tests for all utility functions (order building, extension management, encoding)
