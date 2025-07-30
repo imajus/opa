@@ -116,9 +116,11 @@ export default function CreateOrderPage() {
     if (!orderParams.expiry) {
       const defaultExpiry = new Date();
       defaultExpiry.setHours(defaultExpiry.getHours() + 1);
+      const offsetMs = defaultExpiry.getTimezoneOffset() * 60 * 1000;
+      const localDate = new Date(defaultExpiry.getTime() - offsetMs);
       setOrderParams((prev) => ({
         ...prev,
-        expiry: defaultExpiry.toISOString().slice(0, 16), // Format for datetime-local input
+        expiry: localDate.toISOString().slice(0, 16), // Format for datetime-local input
       }));
     }
   }, [orderParams.expiry]);
