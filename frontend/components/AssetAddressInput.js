@@ -29,16 +29,13 @@ export const AssetAddressInput = ({
         setTokens([]);
         return;
       }
-
       // If query looks like an address, don't search
       if (/^0x[a-fA-F0-9]{40}$/.test(query)) {
         setTokens([]);
         return;
       }
-
       setIsLoading(true);
       setSearchError(null);
-
       try {
         let results;
         if (!query.trim() || query.length < 2) {
@@ -65,24 +62,20 @@ export const AssetAddressInput = ({
         setIsLoading(false);
       }
     };
-
-    const timeoutId = setTimeout(searchForTokens, 300); // Debounce
+    const timeoutId = setTimeout(searchForTokens, 1000); // Debounce
     return () => clearTimeout(timeoutId);
   }, [query, chain?.id]);
 
   // Get display value for selected token
   const displayValue = useMemo(() => {
     if (!value) return '';
-
     // Check if value matches a token from our search results
     const matchedToken = tokens.find(
       (token) => token.address.toLowerCase() === value.toLowerCase()
     );
-
     if (matchedToken) {
       return `${matchedToken.symbol} - ${matchedToken.name}`;
     }
-
     // Return the raw address for manual entries
     return value;
   }, [value, tokens]);
