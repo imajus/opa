@@ -1,8 +1,8 @@
 import { ExtensionBuilder, Address } from '@1inch/limit-order-sdk';
 import { createWrapper, createSchema } from './utils/factory.js';
-import { takerTokenAmount, uint256 } from './utils/types.js';
 import { HookType } from '../constants.js';
 import Config from '../config.js';
+import { parseUnits } from 'ethers';
 
 /**
  * Range Amount Calculator extension wrapper for 1inch Limit Order Protocol
@@ -24,6 +24,18 @@ function encodeRangeAmountExtraData({ priceStart, priceEnd }) {
   return '0x' + priceStartHex + priceEndHex;
 }
 
+export const price = {
+  validate(value) {
+    if (isNaN(value)) {
+      throw new Error('Token amount must be a number');
+    }
+    if (Number(value) <= 0) {
+      throw new Error('Token amount must be positive');
+    }
+  },
+  parse: (value) => parseUnits(value, 18),
+};
+
 /**
  * Range Amount Calculator extension wrapper
  * Provides linear price progression within a specified range
@@ -38,12 +50,12 @@ const rangeAmountCalculatorWrapper = createWrapper({
       fields: {
         priceStart: {
           label: 'Price Start',
-          type: takerTokenAmount,
+          type: price,
           hint: 'Starting price (lower bound) in taker asset units per maker asset unit',
         },
         priceEnd: {
           label: 'Price End',
-          type: takerTokenAmount,
+          type: price,
           hint: 'Ending price (upper bound) in taker asset units per maker asset unit',
         },
       },
