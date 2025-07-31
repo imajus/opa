@@ -20,15 +20,11 @@ import {
   formatEther,
   ZeroAddress,
 } from 'ethers';
-import { Token } from '../../lib/1inch';
+import { Token, Balance } from '../../lib/1inch';
 
 // ERC20 ABI for token interactions
 const ERC20_ABI = [
   'function approve(address spender, uint256 amount) returns (bool)',
-  'function name() view returns (string)',
-  'function symbol() view returns (string)',
-  'function balanceOf(address) view returns (uint256)',
-  'function decimals() view returns (uint8)',
 ];
 
 export default function FillOrderPage() {
@@ -122,13 +118,12 @@ export default function FillOrderPage() {
           orderData.order.takerAsset,
         ];
         const tokensInfo = await Token.batchGetTokens(chain.id, tokenAddresses);
-        // Get taker token balance using ERC20 contract
-        const takerTokenContract = new Contract(
+        // Get taker token balance using Balance API
+        const balances = await Balance.getCustomBalances(address, [
           orderData.order.takerAsset,
-          ERC20_ABI,
-          signer
-        );
-        const balance = await takerTokenContract.balanceOf(address);
+        ]);
+        const balance =
+          balances[orderData.order.takerAsset.toLowerCase()] || '0';
         setTokensData(tokensInfo);
         setTakerTokenBalance(balance.toString());
       } catch (error) {
@@ -331,7 +326,6 @@ export default function FillOrderPage() {
       if (!takerToken) {
         throw new Error('Token information not loaded');
       }
-
       // Convert amount to wei using token decimals
       const amountInWei = parseUnits(takerAmount, takerToken.decimals);
       // Check if user has sufficient balance
