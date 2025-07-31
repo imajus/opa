@@ -1,5 +1,6 @@
 require('dotenv').config();
 require('@nomicfoundation/hardhat-toolbox');
+require('hardhat-deploy');
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -33,9 +34,9 @@ module.exports = {
     artifacts: './artifacts',
   },
   networks: {
-    local: {
-      url: 'http://127.0.0.1:8545/',
-    },
+    // local: {
+    //   url: 'http://127.0.0.1:8545/',
+    // },
     hardhat: {
       forking: {
         url: `https://eth-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
@@ -44,5 +45,10 @@ module.exports = {
   },
   gasReporter: {
     enabled: false,
+  },
+  namedAccounts: {
+    deployer: {
+      default: 0,
+    },
   },
 };
