@@ -1,5 +1,5 @@
 import { formatEther, ZeroAddress } from 'ethers';
-import { parseMakerTraits } from 'opa-builder/lib/utils.js';
+import { parseMakerTraits } from 'opa-builder';
 
 // Helper function to get token symbol from address
 const getTokenSymbol = (address) => {

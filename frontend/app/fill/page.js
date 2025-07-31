@@ -55,13 +55,11 @@ export default function FillOrderPage() {
   // Initialize from URL parameters
   useEffect(() => {
     const orderParam = searchParams.get('order');
-
     if (!orderParam) {
       setOrderError('No order data provided. Please create an order first.');
       setIsValidOrder(false);
       return;
     }
-
     try {
       const decodedOrder = decodeOrder(orderParam);
       setOrderData(decodedOrder);

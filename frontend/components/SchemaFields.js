@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Type } from 'opa-builder/lib';
+import { Type } from 'opa-builder';
 
 const baseInputClassName =
   'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent text-gray-900 placeholder-gray-500';

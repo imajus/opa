@@ -1,16 +1,4 @@
-import { extensions, Type } from 'opa-builder/lib';
-import { parseEther } from 'ethers';
-
-/**
- * Parses amount values for token amounts
- * @param {string} asset - Asset address (currently unused)
- * @param {string} value - Value to parse
- * @returns {string} Parsed amount in wei as string
- */
-export function parseAmount(asset, value) {
-  // Skip the asset parameter for now as requested
-  return parseEther(value).toString();
-}
+import { extensions, Type } from 'opa-builder';
 
 export function getSchemaTypeName(type) {
   if (type === Type.address) return 'Address';
