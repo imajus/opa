@@ -22,6 +22,7 @@ import {
   getFieldComponent,
   TokenAmountField,
 } from '../../components/SchemaFields';
+import { AssetAddressInput } from '../../components/AssetAddressInput';
 
 export default function CreateOrderPage() {
   const router = useRouter();
@@ -30,7 +31,6 @@ export default function CreateOrderPage() {
   const signer = useEthersSigner();
 
   // State for strategy and extensions
-  // const [strategy, setStrategy] = useState(null);
   const [selectedExtensions, setSelectedExtensions] = useState([]);
   const [isSimpleOrder, setIsSimpleOrder] = useState(false);
 
@@ -47,21 +47,21 @@ export default function CreateOrderPage() {
     allowPartialFills: true,
     allowMultipleFills: false,
     // DEBUG
-    makerAsset: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-    makerAmount: '3.5',
-    takerAsset: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-    takerAmount: '0.001',
+    // makerAsset: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+    // makerAmount: '3.5',
+    // takerAsset: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+    // takerAmount: '0.001',
   });
 
   // State for extension parameters
   const [extensionParameters, setExtensionParameters] = useState({
     //DEBUG
-    [HookType.MAKER_AMOUNT]: {
-      startTime: Math.floor(Date.now() / 1000),
-      endTime: Math.floor(Date.now() / 1000) + 60 * 60,
-      startAmount: '0.0015',
-      endAmount: '0.0005',
-    },
+    // [HookType.MAKER_AMOUNT]: {
+    //   startTime: Math.floor(Date.now() / 1000),
+    //   endTime: Math.floor(Date.now() / 1000) + 60 * 60,
+    //   startAmount: '0.0015',
+    //   endAmount: '0.0005',
+    // },
   });
 
   // State for validation and UI
@@ -75,7 +75,6 @@ export default function CreateOrderPage() {
     if (blueprintParam) {
       try {
         const { extensions } = decodeStrategy(blueprintParam);
-        // setStrategy(decodedStrategy);
         // Store selected extensions instead of creating builder immediately
         if (extensions?.length > 0) {
           setSelectedExtensions(extensions);
@@ -392,29 +391,18 @@ export default function CreateOrderPage() {
           <h3 className="text-lg font-semibold text-gray-900 mb-6">
             Order Parameters
           </h3>
-
           <div className="space-y-6">
             {/* Core Trading Parameters */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Maker Asset (Token Address) *
-                </label>
-                <input
-                  type="text"
-                  value={orderParams.makerAsset}
-                  onChange={(e) =>
-                    handleParamChange('makerAsset', e.target.value)
-                  }
-                  placeholder="0x..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent text-gray-900 placeholder-gray-500"
-                />
-                {validationErrors.makerAsset && (
-                  <p className="text-red-600 text-sm mt-1">
-                    {validationErrors.makerAsset}
-                  </p>
-                )}
-              </div>
+              <AssetAddressInput
+                label="Maker Asset (Token Address)"
+                value={orderParams.makerAsset}
+                onChange={(value) => handleParamChange('makerAsset', value)}
+                placeholder="Search tokens or enter address (0x...)"
+                required={true}
+                error={validationErrors.makerAsset}
+                hint="Search for a token or enter its contract address"
+              />
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -433,25 +421,15 @@ export default function CreateOrderPage() {
                 )}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Taker Asset (Token Address) *
-                </label>
-                <input
-                  type="text"
-                  value={orderParams.takerAsset}
-                  onChange={(e) =>
-                    handleParamChange('takerAsset', e.target.value)
-                  }
-                  placeholder="0x..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent text-gray-900 placeholder-gray-500"
-                />
-                {validationErrors.takerAsset && (
-                  <p className="text-red-600 text-sm mt-1">
-                    {validationErrors.takerAsset}
-                  </p>
-                )}
-              </div>
+              <AssetAddressInput
+                label="Taker Asset (Token Address)"
+                value={orderParams.takerAsset}
+                onChange={(value) => handleParamChange('takerAsset', value)}
+                placeholder="Search tokens or enter address (0x...)"
+                required={true}
+                error={validationErrors.takerAsset}
+                hint="Search for a token or enter its contract address"
+              />
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
