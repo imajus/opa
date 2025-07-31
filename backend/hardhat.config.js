@@ -1,5 +1,6 @@
 require('dotenv').config();
-require('@nomicfoundation/hardhat-toolbox');
+require('@nomicfoundation/hardhat-ethers');
+require('@nomicfoundation/hardhat-chai-matchers');
 require('hardhat-deploy');
 
 /** @type import('hardhat/config').HardhatUserConfig */
