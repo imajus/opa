@@ -45,7 +45,11 @@ async function apiCall(endpoint, options = {}) {
         `API request failed: ${response.status} ${response.statusText}`
       );
     }
-    return await response.json();
+    const data = await response.json();
+    if (data.error) {
+      throw new Error(`API Error: ${data.error}`);
+    }
+    return data;
   } catch (error) {
     console.error('1Inch API Error:', error);
     throw error;
