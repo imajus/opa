@@ -2,23 +2,18 @@
  * Global configuration for 1inch Limit Order Protocol extensions
  */
 export default {
-  // network: {
-  //   name: 'localhost',
-  //   chainId: 31337,
-  //   rpcUrl: 'http://localhost:8545',
-  // },
   extensions: {
     gasStation: {
-      address: '0xFEE2d383Ee292283eC43bdf0fa360296BE1e1149',
+      address: null, //TODO
     },
     chainlinkCalculator: {
-      address: '0x65933e6885FeBC647659766A7837dd410cCDcb65',
+      address: 0x644ea330f200a1cfde1558e0ebb2e12a642f1900,
     },
     dutchAuctionCalculator: {
-      address: '0xC9481A6935698050E569AcD70078DAD8303871CF',
+      address: '0xb4a98c55aA4A179516e98e12b3042CF95e739cD0',
     },
     rangeAmountCalculator: {
-      address: '0xb7aCdc1Ae11554dfe98aA8791DCEE0F009155D5e',
+      address: '0x98e58a8fCb283F69Ad5eA97E618A589A284c0210',
     },
   },
 };
