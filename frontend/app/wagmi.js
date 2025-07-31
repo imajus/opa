@@ -1,28 +1,28 @@
 'use client';
 
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
-import { webSocket } from 'viem';
-import { mainnet } from 'wagmi/chains';
+// import { webSocket } from 'viem';
+import { /* mainnet,  */ base } from 'wagmi/chains';
 
 // Custom localhost network configuration
-const localhost = {
-  id: 31337,
-  name: 'localhost',
-  nativeCurrency: {
-    decimals: 18,
-    name: 'Ether',
-    symbol: 'ETH',
-  },
-  rpcUrls: {
-    default: {
-      http: ['http://localhost:8545'],
-    },
-    public: {
-      http: ['http://localhost:8545'],
-    },
-  },
-  testnet: true,
-};
+// const localhost = {
+//   id: 31337,
+//   name: 'localhost',
+//   nativeCurrency: {
+//     decimals: 18,
+//     name: 'Ether',
+//     symbol: 'ETH',
+//   },
+//   rpcUrls: {
+//     default: {
+//       http: ['http://localhost:8545'],
+//     },
+//     public: {
+//       http: ['http://localhost:8545'],
+//     },
+//   },
+//   testnet: true,
+// };
 
 // const tenderly = {
 //   id: 33333,
@@ -61,7 +61,7 @@ const localhost = {
 
 export const config = getDefaultConfig({
   appName: 'OPA',
-  projectId: 'YOUR_PROJECT_ID', // Get from https://cloud.walletconnect.com
-  chains: [mainnet, localhost /* tenderly */],
+  projectId: 'add37cfe455e760daf15715ac60c5d37', // Get from https://cloud.walletconnect.com
+  chains: [base /*mainnet, localhost, tenderly */],
   ssr: true, // If your dApp uses server side rendering (SSR)
 });
