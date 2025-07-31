@@ -44,25 +44,13 @@ export default function CreateOrderPage() {
     receiver: '',
     expiry: '',
     nonce: '',
+    // Allow partial & multiple fills to disable bit invalidator
     allowPartialFills: true,
-    allowMultipleFills: false,
-    // DEBUG
-    // makerAsset: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-    // makerAmount: '3.5',
-    // takerAsset: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-    // takerAmount: '0.001',
+    allowMultipleFills: true,
   });
 
   // State for extension parameters
-  const [extensionParameters, setExtensionParameters] = useState({
-    //DEBUG
-    // [HookType.MAKER_AMOUNT]: {
-    //   startTime: Math.floor(Date.now() / 1000),
-    //   endTime: Math.floor(Date.now() / 1000) + 60 * 60,
-    //   startAmount: '0.0015',
-    //   endAmount: '0.0005',
-    // },
-  });
+  const [extensionParameters, setExtensionParameters] = useState({});
 
   // State for validation and UI
   const [validationErrors, setValidationErrors] = useState({});
