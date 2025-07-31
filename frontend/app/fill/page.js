@@ -36,6 +36,7 @@ export default function FillOrderPage() {
   const [orderData, setOrderData] = useState(null);
   const [isValidOrder, setIsValidOrder] = useState(false);
   const [orderError, setOrderError] = useState('');
+  const [isLoadingOrder, setIsLoadingOrder] = useState(true);
 
   // State for filling process
   const [currentStep, setCurrentStep] = useState(1); // 1: Approve, 2: Fill
@@ -63,17 +64,20 @@ export default function FillOrderPage() {
     if (!orderParam) {
       setOrderError('No order data provided. Please create an order first.');
       setIsValidOrder(false);
+      setIsLoadingOrder(false);
       return;
     }
     try {
       const decodedOrder = decodeOrder(orderParam);
       setOrderData(decodedOrder);
       setIsValidOrder(true);
+      setIsLoadingOrder(false);
     } catch (error) {
       setOrderError(
         'Invalid order data. Please check the order link and try again.'
       );
       setIsValidOrder(false);
+      setIsLoadingOrder(false);
     }
   }, [searchParams]);
 
@@ -432,7 +436,52 @@ export default function FillOrderPage() {
   };
 
   const renderOrderSummary = () => {
-    if (!orderData || !tokensData) return null;
+    if (!orderData) return null;
+
+    if (isLoadingTokens || !tokensData) {
+      return (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-6">
+            Order Summary
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Maker Side Loading */}
+            <div className="border border-gray-200 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-gray-600 mb-3">
+                MAKER WANTS
+              </h4>
+              <div className="space-y-2">
+                <div className="flex items-center">
+                  <div className="animate-pulse bg-gray-300 h-8 w-32 rounded"></div>
+                  <div className="animate-pulse bg-gray-200 h-4 w-16 rounded ml-2"></div>
+                </div>
+                <div className="animate-pulse bg-gray-200 h-3 w-full rounded"></div>
+              </div>
+            </div>
+
+            {/* Taker Side Loading */}
+            <div className="border border-gray-200 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-gray-600 mb-3">
+                TAKER GIVES
+              </h4>
+              <div className="space-y-2">
+                <div className="flex items-center">
+                  <div className="animate-pulse bg-gray-300 h-8 w-32 rounded"></div>
+                  <div className="animate-pulse bg-gray-200 h-4 w-16 rounded ml-2"></div>
+                </div>
+                <div className="animate-pulse bg-gray-200 h-3 w-full rounded"></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Loading text */}
+          <div className="flex items-center justify-center mt-6 pt-6 border-t border-gray-200">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400 mr-2"></div>
+            <span className="text-gray-500">Loading token information...</span>
+          </div>
+        </div>
+      );
+    }
 
     const makerTraits = getMakerTraits();
     return (
@@ -449,7 +498,7 @@ export default function FillOrderPage() {
             </h4>
             <div className="space-y-2">
               <div>
-                <span className="text-2xl font-bold text-gray-900">
+                <span className="text-4xl font-bold text-gray-900">
                   {formatTokenAmount(
                     getMakerAmount(),
                     orderData.order.makerAsset
@@ -472,7 +521,7 @@ export default function FillOrderPage() {
             </h4>
             <div className="space-y-2">
               <div>
-                <span className="text-2xl font-bold text-gray-900">
+                <span className="text-4xl font-bold text-gray-900">
                   {formatTokenAmount(
                     getTakerAmount(),
                     orderData.order.takerAsset
@@ -649,7 +698,11 @@ export default function FillOrderPage() {
   };
 
   const renderCustomFillControls = () => {
-    if (!orderData || !tokensData) return null;
+    if (!orderData) return null;
+
+    if (isLoadingTokens || !tokensData) {
+      return null; // Don't show partial fill controls while loading
+    }
 
     const makerTraits = getMakerTraits();
     if (!makerTraits?.allowPartialFills) return null;
@@ -909,19 +962,31 @@ export default function FillOrderPage() {
                     return `${formatTokenAmount(takerAmount, orderData.order.takerAsset)} ${getTokenSymbol(orderData.order.takerAsset)}`;
                   })()}
                 </p>
-                {getTakerToken() && (
+                {isLoadingTokens ? (
                   <div className="mt-1 text-gray-400 text-xs">
-                    <div>
-                      Balance:{' '}
-                      {formatUnits(takerTokenBalance, getTakerToken().decimals)}{' '}
-                      {getTakerToken().symbol}
-                      {!hasSufficientBalance() && (
-                        <span className="text-red-600 ml-1">
-                          ⚠ Insufficient
-                        </span>
-                      )}
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-400 mr-2"></div>
+                      Loading balance...
                     </div>
                   </div>
+                ) : (
+                  getTakerToken() && (
+                    <div className="mt-1 text-gray-400 text-xs">
+                      <div>
+                        Balance:{' '}
+                        {formatUnits(
+                          takerTokenBalance,
+                          getTakerToken().decimals
+                        )}{' '}
+                        {getTakerToken().symbol}
+                        {!hasSufficientBalance() && (
+                          <span className="text-red-600 ml-1">
+                            ⚠ Insufficient
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
                 )}
               </div>
             </div>
@@ -1071,6 +1136,31 @@ export default function FillOrderPage() {
       </div>
     );
   };
+
+  if (isLoadingOrder) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              Fill Limit Order
+            </h1>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 mb-6">
+              <div className="flex flex-col items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-orange mb-4"></div>
+                <p className="text-gray-600 text-lg">
+                  Loading order details...
+                </p>
+                <p className="text-gray-500 text-sm mt-2">
+                  Please wait while we verify the order information.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!isValidOrder) {
     return (
