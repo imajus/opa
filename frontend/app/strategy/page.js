@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   getAvailableExtensions,
-  checkExtensionConflicts,
   getExtensionConfig,
   flatExtensionConfigParams,
   getSchemaTypeName,
@@ -16,45 +15,69 @@ export default function StrategyPage() {
   const router = useRouter();
   const [selectedExtensions, setSelectedExtensions] = useState([]);
   // const [extensionParameters, setExtensionParameters] = useState({});
-  const [conflictAnalysis, setConflictAnalysis] = useState({
-    isValid: true,
-    conflicts: [],
-    warnings: [],
-  });
-  const [availableExtensions] = useState(getAvailableExtensions());
+  const allExtensions = useMemo(() => getAvailableExtensions(), []);
+  const [availableExtensions, setAvailableExtensions] = useState(
+    () => allExtensions
+  );
 
-  // Check for conflicts whenever selected extensions change
+  // Helper function to get conflicting extensions for a given extension
+  const getConflictingExtensions = useCallback(
+    (extensionId) => {
+      const targetConfig = getExtensionConfig(extensionId);
+      if (!targetConfig || !targetConfig.hooks) return [];
+
+      const targetHookTypes = new Set(
+        targetConfig.hooks.map((hook) => hook.type)
+      );
+
+      return allExtensions
+        .filter((ext) => {
+          if (ext.id === extensionId) return false; // Don't include the extension itself
+          if (!ext.hooks) return false;
+
+          // Check if any hook types overlap
+          return ext.hooks.some((hook) => targetHookTypes.has(hook.type));
+        })
+        .map((ext) => ext.id);
+    },
+    [allExtensions]
+  );
+
+  // Update available extensions whenever selected extensions change
   useEffect(() => {
-    const analysis = checkExtensionConflicts(selectedExtensions);
-    setConflictAnalysis(analysis);
-  }, [selectedExtensions]);
+    // Update available extensions based on current selection
+    if (selectedExtensions.length === 0) {
+      setAvailableExtensions(allExtensions);
+      return;
+    }
+
+    // Get all conflicting extension IDs from all selected extensions
+    const allConflictingIds = new Set();
+    selectedExtensions.forEach((selectedId) => {
+      const conflicting = getConflictingExtensions(selectedId);
+      conflicting.forEach((id) => allConflictingIds.add(id));
+    });
+
+    // Filter out conflicting extensions (but keep selected ones)
+    const filtered = allExtensions.filter(
+      (ext) =>
+        selectedExtensions.includes(ext.id) || !allConflictingIds.has(ext.id)
+    );
+
+    setAvailableExtensions(filtered);
+  }, [selectedExtensions, allExtensions, getConflictingExtensions]);
 
   const handleExtensionToggle = (extensionId) => {
     setSelectedExtensions((prev) => {
       if (prev.includes(extensionId)) {
-        // Remove extension and its parameters
-        // const newParams = { ...extensionParameters };
-        // delete newParams[extensionId];
-        // setExtensionParameters(newParams);
-        // return prev.filter((id) => id !== extensionId);
+        return prev.filter((id) => id !== extensionId);
       } else {
-        // Add extension and initialize its parameters
-        // const config = getExtensionConfig(extensionId);
-        // const defaultParams = config.hooks.map(({ params }) => params).flat();
-        // setExtensionParameters((prev) => ({
-        //   ...prev,
-        //   [extensionId]: defaultParams,
-        // }));
         return [...prev, extensionId];
       }
     });
   };
 
   const handleContinue = () => {
-    if (!conflictAnalysis.isValid) {
-      return; // Don't proceed if there are conflicts
-    }
-
     const strategy = {
       extensions: selectedExtensions,
       // parameters: extensionParameters,
@@ -96,31 +119,6 @@ export default function StrategyPage() {
             payment, dynamic pricing, and flexible amounts.
           </p>
         </div>
-
-        {/* Conflict Alerts */}
-        {conflictAnalysis.conflicts.length > 0 && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <h3 className="text-red-800 font-semibold mb-2">
-              ⚠️ Extension Conflicts Detected
-            </h3>
-            {conflictAnalysis.conflicts.map((conflict, index) => (
-              <p key={index} className="text-red-700 text-sm mb-1">
-                {conflict.message} ({conflict.extensions.join(', ')})
-              </p>
-            ))}
-          </div>
-        )}
-
-        {/* {conflictAnalysis.warnings.length > 0 && (
-          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <h3 className="text-yellow-800 font-semibold mb-2">⚠️ Warnings</h3>
-            {conflictAnalysis.warnings.map((warning, index) => (
-              <p key={index} className="text-yellow-700 text-sm mb-1">
-                {warning.message}
-              </p>
-            ))}
-          </div>
-        )} */}
 
         {/* Extension Selection Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -264,11 +262,9 @@ export default function StrategyPage() {
 
             <button
               onClick={handleContinue}
-              disabled={
-                selectedExtensions.length === 0 || !conflictAnalysis.isValid
-              }
+              disabled={selectedExtensions.length === 0}
               className={`font-semibold py-3 px-6 rounded-lg transition-colors ${
-                selectedExtensions.length > 0 && conflictAnalysis.isValid
+                selectedExtensions.length > 0
                   ? 'bg-primary-orange hover:bg-orange-600 text-white'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
