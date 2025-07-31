@@ -12,7 +12,7 @@ const BASE_URL = 'https://1inch-vercel-proxy-lime.vercel.app';
  * @returns {Promise<any>} The API response
  */
 async function apiCall(endpoint, options = {}) {
-  const { params = {}, headers = {}, method = 'GET', body } = options;
+  const { params = {}, method = 'GET', body } = options;
   // Build query string from parameters
   const queryParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -27,9 +27,8 @@ async function apiCall(endpoint, options = {}) {
   const url = `${BASE_URL}${endpoint}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
   // Default headers required by the API
   const defaultHeaders = {
-    'cf-ipcountry': 'US', // Default country
+    // 'cf-ipcountry': 'US', // Default country
     'Content-Type': 'application/json',
-    ...headers,
   };
   const requestOptions = {
     method,
