@@ -9,10 +9,9 @@ import { apiCall } from './utils';
  * @returns {Promise<TokensMap>} Multi-chain tokens info map
  */
 export async function getMultiChainTokens(options = {}) {
-  const { provider = '1inch', country, cfIpCountry = 'US' } = options;
+  const { provider = '1inch', country = 'US' } = options;
   return apiCall('/token/v1.3/multi-chain', {
     params: { provider, country },
-    headers: { 'cf-ipcountry': cfIpCountry },
   });
 }
 
@@ -22,10 +21,9 @@ export async function getMultiChainTokens(options = {}) {
  * @returns {Promise<TokenListResponseDto>} Multi-chain tokens list
  */
 export async function getMultiChainTokensList(options = {}) {
-  const { provider = '1inch', country, cfIpCountry = 'US' } = options;
+  const { provider = '1inch', country = 'US' } = options;
   return apiCall('/token/v1.3/multi-chain/token-list', {
     params: { provider, country },
-    headers: { 'cf-ipcountry': cfIpCountry },
   });
 }
 
@@ -48,8 +46,7 @@ export async function searchMultiChainTokens(options = {}) {
     ignoreListed = false,
     onlyPositiveRating,
     limit = 10,
-    country,
-    cfIpCountry = 'US',
+    country = 'US',
   } = options;
   if (onlyPositiveRating === undefined || country === undefined) {
     throw new Error('onlyPositiveRating and country parameters are required');
@@ -62,7 +59,6 @@ export async function searchMultiChainTokens(options = {}) {
       limit,
       country,
     },
-    headers: { 'cf-ipcountry': cfIpCountry },
   });
 }
 
@@ -77,10 +73,9 @@ export async function searchMultiChainTokens(options = {}) {
  * @returns {Promise<TokensMap>} Tokens info map
  */
 export async function getTokens(chainId, options = {}) {
-  const { provider = '1inch', country, cfIpCountry = 'US' } = options;
+  const { provider = '1inch', country = 'US' } = options;
   return apiCall(`/token/v1.4/${chainId}`, {
     params: { provider, country },
-    headers: { 'cf-ipcountry': cfIpCountry },
   });
 }
 
@@ -91,10 +86,9 @@ export async function getTokens(chainId, options = {}) {
  * @returns {Promise<TokenListResponseDto>} Tokens list
  */
 export async function getTokensList(chainId, options = {}) {
-  const { provider = '1inch', country, cfIpCountry = 'US' } = options;
+  const { provider = '1inch', country = 'US' } = options;
   return apiCall(`/token/v1.4/${chainId}/token-list`, {
     params: { provider, country },
-    headers: { 'cf-ipcountry': cfIpCountry },
   });
 }
 
@@ -110,7 +104,7 @@ export async function searchTokens(chainId, options = {}) {
     ignoreListed = false,
     onlyPositiveRating = true,
     limit = 10,
-    cfIpCountry = 'US',
+    country = 'US',
   } = options;
   return apiCall(`/token/v1.4/${chainId}/search`, {
     params: {
@@ -119,7 +113,6 @@ export async function searchTokens(chainId, options = {}) {
       only_positive_rating: onlyPositiveRating,
       limit,
     },
-    headers: { 'cf-ipcountry': cfIpCountry },
   });
 }
 
@@ -127,18 +120,14 @@ export async function searchTokens(chainId, options = {}) {
  * Get multiple tokens info by addresses (v1.4)
  * @param {ChainId} chainId - The blockchain chain ID
  * @param {TokenAddress[]} addresses - Array of token addresses
- * @param {TokenApiOptions} options - Options for the request
  * @returns {Promise<CustomTokensMap>} Tokens info map
  */
-export async function getCustomTokens(chainId, addresses, options = {}) {
-  const { cfIpCountry = 'US' } = options;
-
+export async function getCustomTokens(chainId, addresses) {
   if (!Array.isArray(addresses) || addresses.length === 0) {
     throw new Error('addresses must be a non-empty array');
   }
   return apiCall(`/token/v1.4/${chainId}/custom`, {
     params: { addresses },
-    headers: { 'cf-ipcountry': cfIpCountry },
   });
 }
 
@@ -149,14 +138,11 @@ export async function getCustomTokens(chainId, addresses, options = {}) {
  * @param {TokenApiOptions} options - Options for the request
  * @returns {Promise<TokenDto>} Token info
  */
-export async function getCustomToken(chainId, address, options = {}) {
-  const { cfIpCountry = 'US' } = options;
+export async function getCustomToken(chainId, address) {
   if (!address) {
     throw new Error('address parameter is required');
   }
-  return apiCall(`/token/v1.4/${chainId}/custom/${address}`, {
-    headers: { 'cf-ipcountry': cfIpCountry },
-  });
+  return apiCall(`/token/v1.4/${chainId}/custom/${address}`, {});
 }
 
 // ============================================================================
