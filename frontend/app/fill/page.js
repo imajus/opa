@@ -21,6 +21,9 @@ import {
   ZeroAddress,
 } from 'ethers';
 import { Token, Balance } from '../../lib/1inch';
+import TokenSymbol, {
+  getTokenDataForSymbol,
+} from '../../components/TokenSymbol';
 
 // ERC20 ABI for token interactions
 const ERC20_ABI = [
@@ -504,9 +507,16 @@ export default function FillOrderPage() {
                     orderData.order.makerAsset
                   )}
                 </span>
-                <span className="text-sm text-gray-500 ml-2">
-                  {getTokenSymbol(orderData.order.makerAsset)}
-                </span>
+                <TokenSymbol
+                  address={orderData.order.makerAsset}
+                  symbol={getTokenSymbol(orderData.order.makerAsset)}
+                  tokenData={getTokenDataForSymbol(
+                    orderData.order.makerAsset,
+                    tokensData
+                  )}
+                  textColor="text-gray-500"
+                  className="ml-2"
+                />
               </div>
               <div className="text-xs text-gray-500 font-mono">
                 {orderData.order.makerAsset}
@@ -527,9 +537,16 @@ export default function FillOrderPage() {
                     orderData.order.takerAsset
                   )}
                 </span>
-                <span className="text-sm text-gray-500 ml-2">
-                  {getTokenSymbol(orderData.order.takerAsset)}
-                </span>
+                <TokenSymbol
+                  address={orderData.order.takerAsset}
+                  symbol={getTokenSymbol(orderData.order.takerAsset)}
+                  tokenData={getTokenDataForSymbol(
+                    orderData.order.takerAsset,
+                    tokensData
+                  )}
+                  textColor="text-gray-500"
+                  className="ml-2"
+                />
               </div>
               <div className="text-xs text-gray-500 font-mono">
                 {orderData.order.takerAsset}
@@ -777,7 +794,7 @@ export default function FillOrderPage() {
 
               {/* Custom Amount Input */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                   Custom Fill Amount (
                   {getTokenSymbol(orderData.order.takerAsset)})
                 </label>
@@ -802,7 +819,7 @@ export default function FillOrderPage() {
                     MAX
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                   Maximum:{' '}
                   {formatTokenAmount(
                     getTakerAmount(),
@@ -978,7 +995,17 @@ export default function FillOrderPage() {
                           takerTokenBalance,
                           getTakerToken().decimals
                         )}{' '}
-                        {getTakerToken().symbol}
+                        <TokenSymbol
+                          address={orderData.order.takerAsset}
+                          symbol={getTakerToken().symbol}
+                          tokenData={getTokenDataForSymbol(
+                            orderData.order.takerAsset,
+                            tokensData
+                          )}
+                          size="xs"
+                          textColor="text-gray-400"
+                          showLogo={false}
+                        />
                         {!hasSufficientBalance() && (
                           <span className="text-red-600 ml-1">
                             ⚠ Insufficient
