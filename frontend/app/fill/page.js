@@ -28,6 +28,14 @@ import TokenSymbol, {
 // ERC20 ABI for token interactions
 const ERC20_ABI = [
   'function approve(address spender, uint256 amount) returns (bool)',
+  'function allowance(address owner, address spender) view returns (uint256)',
+  'function name() view returns (string)',
+  'function symbol() view returns (string)',
+  'function balanceOf(address) view returns (uint256)',
+  'function decimals() view returns (uint8)',
+  'function nonces(address) view returns (uint256)',
+  'function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external',
+  'function version() view returns (string)',
 ];
 
 export default function FillOrderPage() {
@@ -116,7 +124,6 @@ export default function FillOrderPage() {
   useEffect(() => {
     const loadTokensData = async () => {
       if (!chain?.id || !orderData || !address) return;
-
       setIsLoadingTokens(true);
       try {
         // Use Token.batchGetTokens to get both maker and taker token info
@@ -134,18 +141,85 @@ export default function FillOrderPage() {
         setTokensData(tokensInfo);
         setTakerTokenBalance(balance.toString());
       } catch (error) {
-        console.error('Failed to load token information:', error);
-        setStepErrors({
-          approve:
-            'Failed to load token information. Please check your connection.',
-        });
+        console.error(
+          'Failed to load token information via API, falling back to RPC:',
+          error
+        );
+        // Fallback to RPC calls
+        try {
+          const makerTokenData = await fetchTokenDataViaRPC(
+            orderData.order.makerAsset
+          );
+          const takerTokenData = await fetchTokenDataViaRPC(
+            orderData.order.takerAsset
+          );
+          const takerBalance = await fetchTokenBalanceViaRPC(
+            orderData.order.takerAsset,
+            address
+          );
+          // Create tokens data object in the same format as the API
+          const fallbackTokensData = {};
+          if (makerTokenData) {
+            fallbackTokensData[orderData.order.makerAsset.toLowerCase()] =
+              makerTokenData;
+          }
+          if (takerTokenData) {
+            fallbackTokensData[orderData.order.takerAsset.toLowerCase()] =
+              takerTokenData;
+          }
+          setTokensData(fallbackTokensData);
+          setTakerTokenBalance(takerBalance);
+          console.log('Successfully loaded token data via RPC fallback');
+        } catch (fallbackError) {
+          console.error(
+            'Failed to load token information via RPC fallback:',
+            fallbackError
+          );
+          setStepErrors({
+            approve:
+              'Failed to load token information. Please check your connection.',
+          });
+        }
       } finally {
         setIsLoadingTokens(false);
       }
     };
-
     loadTokensData();
   }, [chain?.id, orderData, address, signer]);
+
+  // Helper functions to fetch token data via RPC
+  const fetchTokenDataViaRPC = async (tokenAddress) => {
+    if (!signer || !tokenAddress) return null;
+    try {
+      const tokenContract = new Contract(tokenAddress, ERC20_ABI, signer);
+      const [symbol, decimals, name] = await Promise.all([
+        tokenContract.symbol(),
+        tokenContract.decimals(),
+        tokenContract.name(),
+      ]);
+      return {
+        symbol,
+        decimals,
+        name,
+        address: tokenAddress,
+      };
+    } catch (error) {
+      console.error(`Failed to fetch token data for ${tokenAddress}:`, error);
+      return null;
+    }
+  };
+
+  const fetchTokenBalanceViaRPC = async (tokenAddress, userAddress) => {
+    if (!signer || !tokenAddress || !userAddress) return '0';
+    try {
+      const tokenContract = new Contract(tokenAddress, ERC20_ABI, signer);
+      const balance = await tokenContract.balanceOf(userAddress);
+      return balance.toString();
+    } catch (error) {
+      console.error(`Failed to fetch balance for ${tokenAddress}:`, error);
+      return '0';
+    }
+  };
 
   // Helper functions to get token information
   const getMakerToken = () => {
