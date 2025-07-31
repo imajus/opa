@@ -126,7 +126,7 @@ export default function FillOrderPage() {
         ];
         const tokensInfo = await Token.batchGetTokens(chain.id, tokenAddresses);
         // Get taker token balance using Balance API
-        const balances = await Balance.getCustomBalances(address, [
+        const balances = await Balance.getCustomBalances(chain.id, address, [
           orderData.order.takerAsset,
         ]);
         const balance =
