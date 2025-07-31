@@ -7,10 +7,20 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount } from 'wagmi';
 import { useEthersSigner } from '../../lib/utils/ethers';
 import { decodeOrder } from '../../lib/utils/encoding';
-import { formatOrderForDisplay } from '../../lib/utils/order';
 import { getExtensionConfig } from '../../lib/utils/extensions';
-import { fillOrder, getLimitOrderContract } from 'opa-builder';
-import { Contract, parseUnits, formatUnits } from 'ethers';
+import {
+  fillOrder,
+  getLimitOrderContract,
+  parseMakerTraits,
+} from 'opa-builder';
+import {
+  Contract,
+  parseUnits,
+  formatUnits,
+  formatEther,
+  ZeroAddress,
+} from 'ethers';
+import { Token } from '../../lib/1inch';
 
 // ERC20 ABI for token interactions
 const ERC20_ABI = [
@@ -28,7 +38,6 @@ export default function FillOrderPage() {
 
   // State for order data
   const [orderData, setOrderData] = useState(null);
-  const [formattedOrder, setFormattedOrder] = useState(null);
   const [isValidOrder, setIsValidOrder] = useState(false);
   const [orderError, setOrderError] = useState('');
 
@@ -47,10 +56,10 @@ export default function FillOrderPage() {
   const [fillPercentage, setFillPercentage] = useState(100);
   const [isPartialFill, setIsPartialFill] = useState(false);
 
-  // State for ERC20 token information
-  const [tokenInfo, setTokenInfo] = useState(null);
-  const [tokenBalance, setTokenBalance] = useState('0');
-  const [isLoadingTokenInfo, setIsLoadingTokenInfo] = useState(false);
+  // State for token information (both maker and taker)
+  const [tokensData, setTokensData] = useState(null);
+  const [takerTokenBalance, setTakerTokenBalance] = useState('0');
+  const [isLoadingTokens, setIsLoadingTokens] = useState(false);
 
   // Initialize from URL parameters
   useEffect(() => {
@@ -63,9 +72,6 @@ export default function FillOrderPage() {
     try {
       const decodedOrder = decodeOrder(orderParam);
       setOrderData(decodedOrder);
-      // Format order for display
-      const formatted = formatOrderForDisplay(decodedOrder);
-      setFormattedOrder(formatted);
       setIsValidOrder(true);
     } catch (error) {
       setOrderError(
@@ -89,80 +95,162 @@ export default function FillOrderPage() {
 
   // Initialize custom fill amount when order data loads
   useEffect(() => {
-    if (formattedOrder) {
-      setCustomFillAmount(formattedOrder.takerAmount);
-      setFillPercentage(100);
-      setIsPartialFill(false);
+    if (orderData && tokensData) {
+      const takerToken = getTakerToken();
+      if (takerToken) {
+        const takerAmount = formatTokenAmount(
+          orderData.order.takingAmount,
+          orderData.order.takerAsset
+        );
+        setCustomFillAmount(takerAmount);
+        setFillPercentage(100);
+        setIsPartialFill(false);
+      }
     }
-  }, [formattedOrder]);
+  }, [orderData, tokensData]);
 
-  // Load token information and check allowance
+  // Load token information for both maker and taker assets
   useEffect(() => {
-    const loadTokenInfo = async () => {
-      if (!signer || !orderData || !address) return;
+    const loadTokensData = async () => {
+      if (!chain?.id || !orderData || !address) return;
 
-      setIsLoadingTokenInfo(true);
+      setIsLoadingTokens(true);
       try {
-        const tokenContract = new Contract(
+        // Use Token.batchGetTokens to get both maker and taker token info
+        const tokenAddresses = [
+          orderData.order.makerAsset,
+          orderData.order.takerAsset,
+        ];
+        const tokensInfo = await Token.batchGetTokens(chain.id, tokenAddresses);
+        // Get taker token balance using ERC20 contract
+        const takerTokenContract = new Contract(
           orderData.order.takerAsset,
           ERC20_ABI,
           signer
         );
-        // Get token info and user's balance
-        const [name, symbol, decimals, balance] = await Promise.all([
-          tokenContract.name(),
-          tokenContract.symbol(),
-          tokenContract.decimals(),
-          tokenContract.balanceOf(address),
-        ]);
-        setTokenInfo({ name, symbol, decimals });
-        setTokenBalance(balance.toString());
-        // Note: We always require explicit approval, regardless of current allowance
-        // This ensures users are aware of the spending approval step
+        const balance = await takerTokenContract.balanceOf(address);
+        setTokensData(tokensInfo);
+        setTakerTokenBalance(balance.toString());
       } catch (error) {
+        console.error('Failed to load token information:', error);
         setStepErrors({
           approve:
             'Failed to load token information. Please check your connection.',
         });
       } finally {
-        setIsLoadingTokenInfo(false);
+        setIsLoadingTokens(false);
       }
     };
 
-    loadTokenInfo();
-  }, [signer, orderData, address]);
+    loadTokensData();
+  }, [chain?.id, orderData, address, signer]);
+
+  // Helper functions to get token information
+  const getMakerToken = () => {
+    if (!tokensData || !orderData) return null;
+    return tokensData[orderData.order.makerAsset.toLowerCase()];
+  };
+
+  const getTakerToken = () => {
+    if (!tokensData || !orderData) return null;
+    return tokensData[orderData.order.takerAsset.toLowerCase()];
+  };
+
+  // Format token amounts according to their decimals
+  const formatTokenAmount = (amount, tokenAddress) => {
+    if (!tokensData || !amount) return amount;
+    const token = tokensData[tokenAddress?.toLowerCase()];
+    if (!token) return amount;
+    try {
+      // If amount is already a string (from order), parse and format it
+      if (typeof amount === 'string') {
+        return formatUnits(parseUnits(amount, token.decimals), token.decimals);
+      }
+      return formatUnits(amount, token.decimals);
+    } catch {
+      return amount;
+    }
+  };
+
+  // Get token symbol with fallback
+  const getTokenSymbol = (tokenAddress) => {
+    if (!tokensData || !tokenAddress) return '???';
+    const token = tokensData[tokenAddress.toLowerCase()];
+    return token?.symbol || '???';
+  };
+
+  // Parse maker traits to get order flags
+  const getMakerTraits = () => {
+    if (!orderData) return null;
+    try {
+      return parseMakerTraits(orderData.order);
+    } catch {
+      return null;
+    }
+  };
+
+  // Format expiry timestamp
+  const formatExpiry = (timestamp) => {
+    if (!timestamp) return 'No expiration';
+    return new Date(Number(timestamp * 1000n)).toLocaleString();
+  };
+
+  // Get formatted receiver address
+  const getReceiverAddress = () => {
+    if (!orderData) return ZeroAddress;
+    const receiverAddr = orderData.order.receiver;
+    return (
+      (receiverAddr === ZeroAddress ? orderData.order.maker : receiverAddr) ||
+      ZeroAddress
+    );
+  };
+
+  // Get formatted amounts using token decimals
+  const getMakerAmount = () => {
+    if (!orderData || !tokensData) return '0';
+    const makerToken = getMakerToken();
+    if (!makerToken) return formatEther(orderData.order.makingAmount);
+    return formatUnits(orderData.order.makingAmount, makerToken.decimals);
+  };
+
+  const getTakerAmount = () => {
+    if (!orderData || !tokensData) return '0';
+    const takerToken = getTakerToken();
+    if (!takerToken) return formatEther(orderData.order.takingAmount);
+    return formatUnits(orderData.order.takingAmount, takerToken.decimals);
+  };
 
   // Note: We always require explicit approval for each order fill
   // Users must go through the approval step regardless of existing allowance
 
   // Calculate actual fill amounts based on custom fill amount or percentage
   const calculateFillAmounts = () => {
-    if (!formattedOrder) return { takerAmount: '0', makerAmount: '0' };
+    if (!orderData || !tokensData)
+      return { takerAmount: '0', makerAmount: '0' };
+
+    const fullTakerAmount = getTakerAmount();
+    const fullMakerAmount = getMakerAmount();
+
     let actualTakerAmount;
     let actualMakerAmount;
+
     if (isPartialFill && customFillAmount && parseFloat(customFillAmount) > 0) {
       // Use custom amount
       actualTakerAmount = customFillAmount;
       // Calculate proportional maker amount
-      const ratio =
-        parseFloat(customFillAmount) / parseFloat(formattedOrder.takerAmount);
-      actualMakerAmount = (
-        parseFloat(formattedOrder.makerAmount) * ratio
-      ).toString();
+      const ratio = parseFloat(customFillAmount) / parseFloat(fullTakerAmount);
+      actualMakerAmount = (parseFloat(fullMakerAmount) * ratio).toString();
     } else if (isPartialFill && fillPercentage < 100) {
       // Use percentage
       const ratio = fillPercentage / 100;
-      actualTakerAmount = (
-        parseFloat(formattedOrder.takerAmount) * ratio
-      ).toString();
-      actualMakerAmount = (
-        parseFloat(formattedOrder.makerAmount) * ratio
-      ).toString();
+      actualTakerAmount = (parseFloat(fullTakerAmount) * ratio).toString();
+      actualMakerAmount = (parseFloat(fullMakerAmount) * ratio).toString();
     } else {
       // Full fill
-      actualTakerAmount = formattedOrder.takerAmount;
-      actualMakerAmount = formattedOrder.makerAmount;
+      actualTakerAmount = fullTakerAmount;
+      actualMakerAmount = fullMakerAmount;
     }
+
     return {
       takerAmount: actualTakerAmount,
       makerAmount: actualMakerAmount,
@@ -171,21 +259,21 @@ export default function FillOrderPage() {
 
   // Validate custom fill amount
   const isValidFillAmount = () => {
-    if (!formattedOrder) return false;
+    if (!orderData || !tokensData) return false;
     if (!isPartialFill) return true; // Full fills are always valid
     const amount = parseFloat(customFillAmount || '0');
-    const maxAmount = parseFloat(formattedOrder.takerAmount);
+    const maxAmount = parseFloat(getTakerAmount());
     return amount > 0 && amount <= maxAmount;
   };
 
   // Check if user has sufficient token balance for current fill amount
   const hasSufficientBalance = () => {
-    if (!tokenInfo || !tokenBalance) return false;
-
+    const takerToken = getTakerToken();
+    if (!takerToken || !takerTokenBalance) return false;
     try {
       const { takerAmount } = calculateFillAmounts();
-      const amountInWei = parseUnits(takerAmount, tokenInfo.decimals);
-      const balance = BigInt(tokenBalance);
+      const amountInWei = parseUnits(takerAmount, takerToken.decimals);
+      const balance = BigInt(takerTokenBalance);
       return balance >= amountInWei;
     } catch {
       return false;
@@ -194,9 +282,9 @@ export default function FillOrderPage() {
 
   const handleCustomAmountChange = (value) => {
     setCustomFillAmount(value);
-    if (formattedOrder && value && parseFloat(value) > 0) {
+    if (orderData && tokensData && value && parseFloat(value) > 0) {
       // Calculate percentage based on custom amount
-      const maxAmount = parseFloat(formattedOrder.takerAmount);
+      const maxAmount = parseFloat(getTakerAmount());
       const currentAmount = parseFloat(value);
       // Clamp the amount to not exceed the maximum
       const clampedAmount = Math.min(currentAmount, maxAmount);
@@ -211,11 +299,10 @@ export default function FillOrderPage() {
 
   const handlePercentageChange = (percentage) => {
     setFillPercentage(percentage);
-
-    if (formattedOrder) {
+    if (orderData && tokensData) {
       // Calculate custom amount based on percentage
       const amount = (
-        (parseFloat(formattedOrder.takerAmount) * percentage) /
+        (parseFloat(getTakerAmount()) * percentage) /
         100
       ).toString();
       setCustomFillAmount(amount);
@@ -239,15 +326,19 @@ export default function FillOrderPage() {
         ERC20_ABI,
         signer
       );
-      // Get token decimals and user balance for validation
-      const decimals = await tokenContract.decimals();
-      const balance = await tokenContract.balanceOf(address);
+      // Get token info from our loaded data
+      const takerToken = getTakerToken();
+      if (!takerToken) {
+        throw new Error('Token information not loaded');
+      }
+
       // Convert amount to wei using token decimals
-      const amountInWei = parseUnits(takerAmount, decimals);
+      const amountInWei = parseUnits(takerAmount, takerToken.decimals);
       // Check if user has sufficient balance
+      const balance = BigInt(takerTokenBalance);
       if (balance < amountInWei) {
         throw new Error(
-          `Insufficient balance. You need ${takerAmount} ${formattedOrder?.takerAssetSymbol} but only have ${formatUnits(balance, decimals)} ${formattedOrder?.takerAssetSymbol}`
+          `Insufficient balance. You need ${takerAmount} ${takerToken.symbol} but only have ${formatUnits(balance, takerToken.decimals)} ${takerToken.symbol}`
         );
       }
       // Submit approval transaction
@@ -284,19 +375,17 @@ export default function FillOrderPage() {
     setStepErrors({});
     try {
       const { takerAmount, makerAmount } = calculateFillAmounts();
-      // Create ERC20 contract instance
-      const tokenContract = new Contract(
-        orderData.order.takerAsset,
-        ERC20_ABI,
-        signer
-      );
-      const decimals = await tokenContract.decimals();
+      // Get token info from our loaded data
+      const takerToken = getTakerToken();
+      if (!takerToken) {
+        throw new Error('Token information not loaded');
+      }
       const receipt = await fillOrder(
         signer,
         orderData.order,
         orderData.signature,
         orderData.extension,
-        parseUnits(takerAmount, decimals) // Pass the custom fill amount
+        parseUnits(takerAmount, takerToken.decimals) // Pass the custom fill amount
       );
       setFillTxHash(receipt.hash);
       setIsFillComplete(true);
@@ -333,11 +422,9 @@ export default function FillOrderPage() {
       }
       return null;
     }
-
     // Get explorer name from chain configuration or use a fallback
     const explorerName =
       chain.blockExplorers?.default?.name || `${networkInfo.name} Explorer`;
-
     return (
       <a
         href={`${networkInfo.explorerUrl}/tx/${txHash}`}
@@ -351,8 +438,9 @@ export default function FillOrderPage() {
   };
 
   const renderOrderSummary = () => {
-    if (!formattedOrder) return null;
+    if (!orderData || !tokensData) return null;
 
+    const makerTraits = getMakerTraits();
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-6">
@@ -368,14 +456,17 @@ export default function FillOrderPage() {
             <div className="space-y-2">
               <div>
                 <span className="text-2xl font-bold text-gray-900">
-                  {formattedOrder.makerAmount}
+                  {formatTokenAmount(
+                    getMakerAmount(),
+                    orderData.order.makerAsset
+                  )}
                 </span>
                 <span className="text-sm text-gray-500 ml-2">
-                  {formattedOrder.makerAssetSymbol}
+                  {getTokenSymbol(orderData.order.makerAsset)}
                 </span>
               </div>
               <div className="text-xs text-gray-500 font-mono">
-                {formattedOrder.makerAsset}
+                {orderData.order.makerAsset}
               </div>
             </div>
           </div>
@@ -388,14 +479,17 @@ export default function FillOrderPage() {
             <div className="space-y-2">
               <div>
                 <span className="text-2xl font-bold text-gray-900">
-                  {formattedOrder.takerAmount}
+                  {formatTokenAmount(
+                    getTakerAmount(),
+                    orderData.order.takerAsset
+                  )}
                 </span>
                 <span className="text-sm text-gray-500 ml-2">
-                  {formattedOrder.takerAssetSymbol}
+                  {getTokenSymbol(orderData.order.takerAsset)}
                 </span>
               </div>
               <div className="text-xs text-gray-500 font-mono">
-                {formattedOrder.takerAsset}
+                {orderData.order.takerAsset}
               </div>
             </div>
           </div>
@@ -407,20 +501,24 @@ export default function FillOrderPage() {
             <div>
               <span className="text-gray-600">Maker:</span>
               <p className="font-mono text-gray-900">
-                {formattedOrder.maker.slice(0, 6)}...
-                {formattedOrder.maker.slice(-4)}
+                {orderData.order.maker.slice(0, 6)}...
+                {orderData.order.maker.slice(-4)}
               </p>
             </div>
             <div>
               <span className="text-gray-600">Receiver:</span>
               <p className="font-mono text-gray-900">
-                {formattedOrder.receiver.slice(0, 6)}...
-                {formattedOrder.receiver.slice(-4)}
+                {getReceiverAddress().slice(0, 6)}...
+                {getReceiverAddress().slice(-4)}
               </p>
             </div>
             <div>
               <span className="text-gray-600">Expires:</span>
-              <p className="text-gray-900">{formattedOrder.expiry}</p>
+              <p className="text-gray-900">
+                {makerTraits
+                  ? formatExpiry(makerTraits.expiration)
+                  : 'No expiration'}
+              </p>
             </div>
           </div>
         </div>
@@ -434,34 +532,34 @@ export default function FillOrderPage() {
             <div className="flex items-center">
               <div
                 className={`w-4 h-4 rounded mr-2 flex items-center justify-center text-xs ${
-                  formattedOrder.allowPartialFills
+                  makerTraits?.allowPartialFills
                     ? 'bg-green-100 text-green-600'
                     : 'bg-red-100 text-red-600'
                 }`}
               >
-                {formattedOrder.allowPartialFills ? '✓' : '✗'}
+                {makerTraits?.allowPartialFills ? '✓' : '✗'}
               </div>
               <span className="text-sm text-gray-700">
                 Partial fills{' '}
-                {formattedOrder.allowPartialFills ? 'allowed' : 'disabled'}
+                {makerTraits?.allowPartialFills ? 'allowed' : 'disabled'}
               </span>
             </div>
             <div className="flex items-center">
               <div
                 className={`w-4 h-4 rounded mr-2 flex items-center justify-center text-xs ${
-                  formattedOrder.allowMultipleFills
+                  makerTraits?.allowMultipleFills
                     ? 'bg-green-100 text-green-600'
                     : 'bg-red-100 text-red-600'
                 }`}
               >
-                {formattedOrder.allowMultipleFills ? '✓' : '✗'}
+                {makerTraits?.allowMultipleFills ? '✓' : '✗'}
               </div>
               <span className="text-sm text-gray-700">
                 Multiple fills{' '}
-                {formattedOrder.allowMultipleFills ? 'allowed' : 'disabled'}
+                {makerTraits?.allowMultipleFills ? 'allowed' : 'disabled'}
               </span>
             </div>
-            {formattedOrder.hasPreInteraction && (
+            {makerTraits?.hasPreInteraction && (
               <div className="flex items-center">
                 <div className="w-4 h-4 rounded mr-2 flex items-center justify-center text-xs bg-blue-100 text-blue-600">
                   ✓
@@ -471,7 +569,7 @@ export default function FillOrderPage() {
                 </span>
               </div>
             )}
-            {formattedOrder.hasPostInteraction && (
+            {makerTraits?.hasPostInteraction && (
               <div className="flex items-center">
                 <div className="w-4 h-4 rounded mr-2 flex items-center justify-center text-xs bg-blue-100 text-blue-600">
                   ✓
@@ -481,7 +579,7 @@ export default function FillOrderPage() {
                 </span>
               </div>
             )}
-            {formattedOrder.usePermit2 && (
+            {makerTraits?.usePermit2 && (
               <div className="flex items-center">
                 <div className="w-4 h-4 rounded mr-2 flex items-center justify-center text-xs bg-purple-100 text-purple-600">
                   ✓
@@ -489,7 +587,7 @@ export default function FillOrderPage() {
                 <span className="text-sm text-gray-700">Uses Permit2</span>
               </div>
             )}
-            {formattedOrder.unwrapWeth && (
+            {makerTraits?.unwrapWeth && (
               <div className="flex items-center">
                 <div className="w-4 h-4 rounded mr-2 flex items-center justify-center text-xs bg-orange-100 text-orange-600">
                   ✓
@@ -501,25 +599,25 @@ export default function FillOrderPage() {
             )}
           </div>
           <div className="mt-3 text-xs text-gray-500">
-            {!formattedOrder.allowPartialFills &&
-              !formattedOrder.allowMultipleFills && (
+            {!makerTraits?.allowPartialFills &&
+              !makerTraits?.allowMultipleFills && (
                 <p>
                   This order must be filled completely in a single transaction.
                 </p>
               )}
-            {formattedOrder.allowPartialFills &&
-              !formattedOrder.allowMultipleFills && (
+            {makerTraits?.allowPartialFills &&
+              !makerTraits?.allowMultipleFills && (
                 <p>This order can be filled partially but only once.</p>
               )}
-            {!formattedOrder.allowPartialFills &&
-              formattedOrder.allowMultipleFills && (
+            {!makerTraits?.allowPartialFills &&
+              makerTraits?.allowMultipleFills && (
                 <p>
                   This order must be filled completely but can have multiple
                   fills.
                 </p>
               )}
-            {formattedOrder.allowPartialFills &&
-              formattedOrder.allowMultipleFills && (
+            {makerTraits?.allowPartialFills &&
+              makerTraits?.allowMultipleFills && (
                 <p>
                   This order supports both partial and multiple fills for
                   maximum flexibility.
@@ -529,23 +627,23 @@ export default function FillOrderPage() {
         </div>
 
         {/* Strategy Information */}
-        {formattedOrder.extensions && formattedOrder.extensions.length > 0 && (
+        {orderData.extension && (
           <div className="mt-6 pt-6 border-t border-gray-200">
             <h4 className="text-sm font-medium text-gray-700 mb-3">
               Strategy Extensions
             </h4>
             <div className="flex flex-wrap gap-2">
-              {formattedOrder.extensions.map((extensionId, index) => {
-                const config = getExtensionConfig(extensionId);
+              {(() => {
+                const config = getExtensionConfig(orderData.extension);
                 return config ? (
                   <span
-                    key={index}
+                    key={orderData.extension}
                     className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm"
                   >
                     {config.name}
                   </span>
                 ) : null;
-              })}
+              })()}
             </div>
             <p className="text-xs text-gray-500 mt-2">
               This order uses advanced extensions for enhanced functionality.
@@ -557,10 +655,13 @@ export default function FillOrderPage() {
   };
 
   const renderCustomFillControls = () => {
-    if (!formattedOrder || !formattedOrder.allowPartialFills) return null;
+    if (!orderData || !tokensData) return null;
+
+    const makerTraits = getMakerTraits();
+    if (!makerTraits?.allowPartialFills) return null;
 
     const { takerAmount, makerAmount } = calculateFillAmounts();
-    const maxTakerAmount = parseFloat(formattedOrder.takerAmount);
+    const maxTakerAmount = parseFloat(getTakerAmount());
 
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
@@ -575,7 +676,7 @@ export default function FillOrderPage() {
               onClick={() => {
                 setIsPartialFill(false);
                 setFillPercentage(100);
-                setCustomFillAmount(formattedOrder.takerAmount);
+                setCustomFillAmount(getTakerAmount());
               }}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 !isPartialFill
@@ -630,7 +731,8 @@ export default function FillOrderPage() {
               {/* Custom Amount Input */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Custom Fill Amount ({formattedOrder.takerAssetSymbol})
+                  Custom Fill Amount (
+                  {getTokenSymbol(orderData.order.takerAsset)})
                 </label>
                 <div className="relative">
                   <input
@@ -640,12 +742,12 @@ export default function FillOrderPage() {
                     placeholder="0.0"
                     step="any"
                     min="0"
-                    max={formattedOrder.takerAmount}
+                    max={getTakerAmount()}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent text-gray-900 placeholder-gray-600"
                   />
                   <button
                     onClick={() => {
-                      setCustomFillAmount(formattedOrder.takerAmount);
+                      setCustomFillAmount(getTakerAmount());
                       setFillPercentage(100);
                     }}
                     className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500 bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded"
@@ -654,12 +756,16 @@ export default function FillOrderPage() {
                   </button>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Maximum: {formattedOrder.takerAmount}{' '}
-                  {formattedOrder.takerAssetSymbol}
+                  Maximum:{' '}
+                  {formatTokenAmount(
+                    getTakerAmount(),
+                    orderData.order.takerAsset
+                  )}{' '}
+                  {getTokenSymbol(orderData.order.takerAsset)}
                 </p>
                 {customFillAmount &&
                   parseFloat(customFillAmount) >
-                    parseFloat(formattedOrder.takerAmount) && (
+                    parseFloat(getTakerAmount()) && (
                     <p className="text-xs text-red-500 mt-1">
                       Amount exceeds order maximum
                     </p>
@@ -695,15 +801,15 @@ export default function FillOrderPage() {
               <div>
                 <span className="text-gray-600">You will pay:</span>
                 <p className="font-semibold text-gray-900">
-                  {parseFloat(takerAmount).toFixed(6)}{' '}
-                  {formattedOrder.takerAssetSymbol}
+                  {formatTokenAmount(takerAmount, orderData.order.takerAsset)}{' '}
+                  {getTokenSymbol(orderData.order.takerAsset)}
                 </p>
               </div>
               <div>
                 <span className="text-gray-600">You will receive:</span>
                 <p className="font-semibold text-gray-900">
-                  {parseFloat(makerAmount).toFixed(6)}{' '}
-                  {formattedOrder.makerAssetSymbol}
+                  {formatTokenAmount(makerAmount, orderData.order.makerAsset)}{' '}
+                  {getTokenSymbol(orderData.order.makerAsset)}
                 </p>
               </div>
             </div>
@@ -799,21 +905,22 @@ export default function FillOrderPage() {
             </div>
             <div>
               <h4 className="font-medium text-gray-900">
-                Approve {formattedOrder?.takerAssetSymbol || 'Token'}
+                Approve {getTokenSymbol(orderData.order.takerAsset)}
               </h4>
               <div>
                 <p className="text-sm text-gray-600">
                   Allow the protocol to spend{' '}
                   {(() => {
                     const { takerAmount } = calculateFillAmounts();
-                    return `${parseFloat(takerAmount).toFixed(6)} ${formattedOrder?.takerAssetSymbol || 'tokens'}`;
+                    return `${formatTokenAmount(takerAmount, orderData.order.takerAsset)} ${getTokenSymbol(orderData.order.takerAsset)}`;
                   })()}
                 </p>
-                {tokenInfo && (
+                {getTakerToken() && (
                   <div className="mt-1 text-gray-400 text-xs">
                     <div>
-                      Balance: {formatUnits(tokenBalance, tokenInfo.decimals)}{' '}
-                      {tokenInfo.symbol}
+                      Balance:{' '}
+                      {formatUnits(takerTokenBalance, getTakerToken().decimals)}{' '}
+                      {getTakerToken().symbol}
                       {!hasSufficientBalance() && (
                         <span className="text-red-600 ml-1">
                           ⚠ Insufficient
@@ -834,18 +941,18 @@ export default function FillOrderPage() {
                   isApproving ||
                   !isValidFillAmount() ||
                   !hasSufficientBalance() ||
-                  isLoadingTokenInfo
+                  isLoadingTokens
                 }
                 className={`w-full sm:w-auto font-semibold py-3 px-6 rounded-lg transition-colors ${
                   isApproving ||
                   !isValidFillAmount() ||
                   !hasSufficientBalance() ||
-                  isLoadingTokenInfo
+                  isLoadingTokens
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-primary-orange hover:bg-orange-600 text-white'
                 }`}
               >
-                {isLoadingTokenInfo
+                {isLoadingTokens
                   ? 'Loading...'
                   : isApproving
                     ? 'Approving...'
@@ -855,7 +962,10 @@ export default function FillOrderPage() {
                         }
                         const { takerAmount } = calculateFillAmounts();
                         const isPartial = isPartialFill && fillPercentage < 100;
-                        return `Approve ${isPartial ? parseFloat(takerAmount).toFixed(4) : ''} ${formattedOrder?.takerAssetSymbol || 'Token'}${isPartial ? ` (${fillPercentage.toFixed(1)}%)` : ''}`;
+                        const tokenSymbol = getTokenSymbol(
+                          orderData.order.takerAsset
+                        );
+                        return `Approve ${isPartial ? formatTokenAmount(takerAmount, orderData.order.takerAsset) : ''} ${tokenSymbol}${isPartial ? ` (${fillPercentage.toFixed(1)}%)` : ''}`;
                       })()}
               </button>
 
@@ -871,16 +981,19 @@ export default function FillOrderPage() {
                 </p>
               )}
 
-              {!hasSufficientBalance() && tokenInfo && (
+              {!hasSufficientBalance() && getTakerToken() && (
                 <p className="text-red-600 text-sm mt-2">
-                  Insufficient {tokenInfo.symbol} balance. You need{' '}
+                  Insufficient {getTakerToken().symbol} balance. You need{' '}
                   {(() => {
                     const { takerAmount } = calculateFillAmounts();
-                    return parseFloat(takerAmount).toFixed(6);
+                    return formatTokenAmount(
+                      takerAmount,
+                      orderData.order.takerAsset
+                    );
                   })()}{' '}
-                  {tokenInfo.symbol} but only have{' '}
-                  {formatUnits(tokenBalance, tokenInfo.decimals)}{' '}
-                  {tokenInfo.symbol}
+                  {getTakerToken().symbol} but only have{' '}
+                  {formatUnits(takerTokenBalance, getTakerToken().decimals)}{' '}
+                  {getTakerToken().symbol}
                 </p>
               )}
             </div>
@@ -916,7 +1029,7 @@ export default function FillOrderPage() {
                 {(() => {
                   const { takerAmount, makerAmount } = calculateFillAmounts();
                   const isPartial = isPartialFill && fillPercentage < 100;
-                  return `Execute the ${isPartial ? 'partial ' : ''}limit order: pay ${parseFloat(takerAmount).toFixed(6)} ${formattedOrder?.takerAssetSymbol} to receive ${parseFloat(makerAmount).toFixed(6)} ${formattedOrder?.makerAssetSymbol}`;
+                  return `Execute the ${isPartial ? 'partial ' : ''}limit order: pay ${formatTokenAmount(takerAmount, orderData.order.takerAsset)} ${getTokenSymbol(orderData.order.takerAsset)} to receive ${formatTokenAmount(makerAmount, orderData.order.makerAsset)} ${getTokenSymbol(orderData.order.makerAsset)}`;
                 })()}
               </p>
             </div>
