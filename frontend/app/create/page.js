@@ -11,17 +11,12 @@ import {
   HookCollisionError,
   extensions,
   HookType,
-} from 'opa-builder/lib';
-import {
-  decodeStrategy,
-  encodeOrder,
-  extractUrlParams,
-} from '../../lib/utils/encoding';
+} from 'opa-builder';
+import { decodeStrategy, encodeOrder } from '../../lib/utils/encoding';
 import {
   flatExtensionConfigParams,
   getExtensionConfig,
   validateExtensionParameters,
-  parseAmount,
 } from '../../lib/utils/extensions';
 import {
   getFieldComponent,
@@ -52,10 +47,10 @@ export default function CreateOrderPage() {
     allowPartialFills: true,
     allowMultipleFills: false,
     // DEBUG
-    makerAsset: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-    makerAmount: '0.01',
-    takerAsset: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-    takerAmount: '350',
+    makerAsset: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+    makerAmount: '3.5',
+    takerAsset: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+    takerAmount: '0.001',
   });
 
   // State for extension parameters
@@ -63,9 +58,9 @@ export default function CreateOrderPage() {
     //DEBUG
     [HookType.MAKER_AMOUNT]: {
       startTime: Math.floor(Date.now() / 1000),
-      endTime: Math.floor(Date.now() / 1000) + 1000 * 60 * 60,
-      startAmount: '400',
-      endAmount: '300',
+      endTime: Math.floor(Date.now() / 1000) + 60 * 60,
+      startAmount: '0.0015',
+      endAmount: '0.0005',
     },
   });
 
@@ -197,9 +192,9 @@ export default function CreateOrderPage() {
       // Create OrderBuilder instance with the order parameters
       const builder = new OrderBuilder(
         orderParams.makerAsset,
-        parseAmount(orderParams.makerAsset, orderParams.makerAmount),
+        orderParams.makerAmount,
         orderParams.takerAsset,
-        parseAmount(orderParams.takerAsset, orderParams.takerAmount),
+        orderParams.takerAmount,
         orderParams.receiver || undefined // Use undefined if no custom receiver
       );
       // Configure maker traits

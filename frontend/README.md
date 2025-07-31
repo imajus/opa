@@ -178,7 +178,7 @@ The frontend integrates with the `opa-builder` package for:
 Example usage:
 
 ```javascript
-import { OrderBuilder, extensions, HookType } from 'opa-builder/lib';
+import { OrderBuilder, extensions, HookType } from 'opa-builder';
 
 // Create order builder
 const builder = new OrderBuilder(

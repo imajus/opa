@@ -25,7 +25,6 @@ test-results/
 # Build artifacts
 dist/
 build/
-lib/
 *.tgz
 
 # TypeScript declaration files (if generated)
