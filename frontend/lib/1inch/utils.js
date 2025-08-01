@@ -3,7 +3,7 @@
  * A collection of functions for interacting with the 1Inch Token API
  */
 
-const BASE_URL = 'https://1inch-vercel-proxy-lime.vercel.app';
+const BASE_URL = process.env.NEXT_PUBLIC_1INCH_API_PROXY_URL;
 
 /**
  * Internal function for making API calls
