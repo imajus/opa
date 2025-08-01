@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
@@ -24,7 +24,7 @@ import {
 } from '../../components/SchemaFields';
 import { AssetAddressInput } from '../../components/AssetAddressInput';
 
-export default function CreateOrderPage() {
+function CreateOrderForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { address, isConnected, chain } = useAccount();
@@ -562,5 +562,22 @@ export default function CreateOrderPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CreateOrderPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 py-8 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-orange mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading order creation form...</p>
+          </div>
+        </div>
+      }
+    >
+      <CreateOrderForm />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
@@ -39,7 +39,7 @@ const ERC20_ABI = [
   'function version() view returns (string)',
 ];
 
-export default function FillOrderPage() {
+function FillOrderPage() {
   const searchParams = useSearchParams();
   const { address, isConnected, chain } = useAccount();
   const signer = useEthersSigner();
@@ -1392,5 +1392,22 @@ export default function FillOrderPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function FillOrderPageWrapper() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 py-8 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-orange mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading order details...</p>
+          </div>
+        </div>
+      }
+    >
+      <FillOrderPage />
+    </Suspense>
   );
 }
