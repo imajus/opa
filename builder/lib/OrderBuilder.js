@@ -6,7 +6,7 @@ import {
 } from '@1inch/limit-order-sdk';
 import { parseUnits } from 'ethers';
 import { HookType } from './constants.js';
-import { makeAssetPermit } from './utils.js';
+import { approveAssetSpending, makeAssetPermit } from './utils.js';
 import createERC20Contract from './contracts/erc20.js';
 
 /**
@@ -176,11 +176,16 @@ export class OrderBuilder {
       takerAmount: takingAmount,
     });
     // Create a permit for the maker asset
-    extension.makerPermit = await makeAssetPermit(
-      signer,
-      makerAssetContract,
-      makingAmount
-    );
+    try {
+      extension.makerPermit = await makeAssetPermit(
+        signer,
+        makerAssetContract,
+        makingAmount
+      );
+    } catch (error) {
+      console.error('Failed to make asset permit, approving instead');
+      await approveAssetSpending(signer, makerAssetContract, makingAmount);
+    }
     // Construct LimitOrder with current params and combined extensions
     const order = new LimitOrder(orderInfo, this.makerTraits, extension);
     // Compute order hash using EIP-712 typed data

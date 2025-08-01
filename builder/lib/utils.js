@@ -132,6 +132,24 @@ export async function makeAssetPermit(
 }
 
 /**
+ * Approve asset spending
+ * @param {import('ethers').Signer} signer - Signer to use for the approval
+ * @param {import('ethers').Contract} asset - Asset contract
+ * @param {BigInt} value - Amount to approve
+ * @returns {Promise<import('ethers').TransactionReceipt>} Transaction receipt
+ */
+export async function approveAssetSpending(signer, asset, value) {
+  const { chainId } = await signer.provider.getNetwork();
+  const spender = getLimitOrderContract(chainId);
+  const allowance = await asset.allowance(await signer.getAddress(), spender);
+  if (allowance >= value) {
+    return;
+  }
+  const tx = await asset.approve(spender, value);
+  return tx.wait();
+}
+
+/**
  * Generic function to fill a limit order
  * @param {import('ethers').Signer} signer - Ethers signer instance
  * @param {import('@1inch/limit-order-sdk').LimitOrderV4Struct} order - The order object to fill
