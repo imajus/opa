@@ -1,0 +1,23 @@
+{
+  "name": "1inch-proxy",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker proxy for 1inch API",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.27.0"
+  },
+  "keywords": [
+    "cloudflare",
+    "worker",
+    "proxy",
+    "1inch",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT"
+}
