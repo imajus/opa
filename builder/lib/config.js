@@ -6,6 +6,9 @@ export default {
     gasStation: {
       address: null, //TODO
     },
+    oneInchCalculator: {
+      address: '0xBf2d92E18f6C84ed809fdF2023F812502b581208',
+    },
     chainlinkCalculator: {
       address: '0x644ea330f200a1cfde1558e0ebb2e12a642f1900',
     },
