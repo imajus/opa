@@ -7,7 +7,7 @@ export default {
       address: null, //TODO
     },
     chainlinkCalculator: {
-      address: 0x644ea330f200a1cfde1558e0ebb2e12a642f1900,
+      address: '0x644ea330f200a1cfde1558e0ebb2e12a642f1900',
     },
     dutchAuctionCalculator: {
       address: '0xb4a98c55aA4A179516e98e12b3042CF95e739cD0',

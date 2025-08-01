@@ -1,17 +1,16 @@
 import { ExtensionBuilder, Address } from '@1inch/limit-order-sdk';
 import { createWrapper, createSchema } from './utils/factory.js';
-import { address, uint256 } from './utils/types.js';
+import { address, int256 } from './utils/types.js';
 import { HookType } from '../constants.js';
 import Config from '../config.js';
+import { parseUnits } from 'ethers';
 
 /**
  * Encodes extraData blob for Chainlink Calculator
  * @param {Object} config - Configuration object
  * @returns {string} Hex-encoded extraData
  */
-function encodeChainlinkExtraData(config) {
-  // Double oracle configuration
-  const { oracle1, oracle2, decimalsScale, spread } = config.config;
+function encodeChainlinkExtraData({ oracle1, oracle2, decimalsScale, spread }) {
   // First byte: flags (bit 6 set for double price)
   const flags = 0x40;
   // Encode decimalsScale as signed 32-byte value
@@ -28,20 +27,35 @@ function encodeChainlinkExtraData(config) {
   const flagsHex = flags.toString(16).padStart(2, '0');
   const oracle1Hex = oracle1.slice(2); // Remove 0x prefix
   const oracle2Hex = oracle2.slice(2); // Remove 0x prefix
-  const spreadHex = BigInt(spread).toString(16).padStart(64, '0');
+  const spreadHex = spread.toString(16).padStart(64, '0');
   return (
     '0x' + flagsHex + oracle1Hex + oracle2Hex + decimalsScaleHex + spreadHex
   );
 }
+
+export const spread = {
+  validate(value) {
+    if (isNaN(value)) {
+      throw new Error('Spread must be a number');
+    }
+    if (Number(value) < 0) {
+      throw new Error('Spread must be positive');
+    }
+    if (Number(value) > 100) {
+      throw new Error('Spread must be less than or equal to 100');
+    }
+  },
+  parse: (value) => parseUnits(value, 7),
+};
 
 /**
  * Chainlink Calculator extension wrapper
  * Provides dynamic pricing using Chainlink oracle feeds
  */
 const chainlinkCalculatorDoubleWrapper = createWrapper({
-  name: 'Chainlink ETH <-> ERC20 Price Calculator',
+  name: 'Chainlink ERC20 ⇄ ERC20 Price Calculator',
   description:
-    'Dynamic pricing using Chainlink oracle feeds with support for single oracle configurations',
+    'Dynamic pricing using Chainlink oracle feeds with support for double oracle configurations',
   hooks: {
     [HookType.MAKER_AMOUNT]: createSchema({
       hint: 'Chainlink oracle configuration',
@@ -58,13 +72,13 @@ const chainlinkCalculatorDoubleWrapper = createWrapper({
         },
         decimalsScale: {
           label: 'Decimals Scale',
-          type: uint256,
+          type: int256,
           hint: 'Decimal scaling factor (can be negative)',
         },
         spread: {
           label: 'Spread',
-          type: uint256,
-          hint: 'Spread in 1e9 units (e.g., 1000000 for 0.1%)',
+          type: spread,
+          hint: 'Spread in %, e.g. 0.5 (max: 100)',
         },
       },
     }),
@@ -79,9 +93,9 @@ const chainlinkCalculatorDoubleWrapper = createWrapper({
     const { address } = Config.extensions.chainlinkCalculator;
     const target = new Address(address);
     const builder = new ExtensionBuilder();
-    const amountConfig = params[HookType.MAKER_AMOUNT];
+    const config = params[HookType.MAKER_AMOUNT];
     // Set making amount calculation if configured
-    const extraData = encodeChainlinkExtraData(amountConfig);
+    const extraData = encodeChainlinkExtraData(config);
     builder.withMakingAmountData(target, extraData);
     builder.withTakingAmountData(target, extraData);
     // Build and return the Extension

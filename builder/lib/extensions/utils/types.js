@@ -25,6 +25,34 @@ export const address = {
 };
 
 /**
+ * 256-bit signed integer field type
+ * Validates and parses int256 values
+ * @type {ExtensionSchemaFieldType}
+ */
+export const int256 = {
+  validate(value) {
+    if (value === undefined || value === null) {
+      throw new Error('Value cannot be undefined or null');
+    }
+    let bigIntValue;
+    try {
+      bigIntValue = BigInt(value);
+    } catch (error) {
+      throw new Error('Value must be convertible to BigInt');
+    }
+    if (bigIntValue < -(2n ** 255n)) {
+      throw new Error('Value is less than int256 minimum');
+    }
+    if (bigIntValue >= 2n ** 255n) {
+      throw new Error('Value exceeds int256 maximum');
+    }
+  },
+  parse(value) {
+    return BigInt(value).toString();
+  },
+};
+
+/*
  * 256-bit unsigned integer field type
  * Validates and parses uint256 values
  * @type {ExtensionSchemaFieldType}

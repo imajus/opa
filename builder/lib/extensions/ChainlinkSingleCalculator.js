@@ -1,100 +1,67 @@
 import { ExtensionBuilder, Address } from '@1inch/limit-order-sdk';
 import { createWrapper, createSchema } from './utils/factory.js';
-import { address, uint256, boolean } from './utils/types.js';
+import { address, boolean } from './utils/types.js';
 import { HookType } from '../constants.js';
 import Config from '../config.js';
+import { parseUnits } from 'ethers';
 
 /**
  * Encodes extraData blob for Chainlink Calculator
  * @param {Object} config - Configuration object
  * @returns {string} Hex-encoded extraData
  */
-function encodeChainlinkExtraData(config) {
-  // Handle both single and double oracle configurations
-  let oracle, spread, inverse;
-
-  if (config.oracle) {
-    // Single oracle configuration
-    ({ oracle, spread, inverse } = config);
-  } else if (config.oracle1) {
-    // Double oracle configuration - use oracle1 as primary
-    oracle = config.oracle1;
-    spread = config.spread;
-    inverse = false; // Double oracle doesn't use inverse flag
-  } else {
-    throw new Error('Invalid oracle configuration - missing oracle or oracle1');
-  }
-
+function encodeChainlinkExtraData({ oracle, spread, inverse }) {
   // First byte: flags (bit 7 = inverse, bit 6 = double price)
   const flags = inverse ? 0x80 : 0x00;
   // Encode: flags (1 byte) + oracle (20 bytes) + spread (32 bytes)
   const flagsHex = flags.toString(16).padStart(2, '0');
   const oracleHex = oracle.slice(2); // Remove 0x prefix
-  const spreadHex = BigInt(spread).toString(16).padStart(64, '0');
+  const spreadHex = spread.toString(16).padStart(64, '0');
   return '0x' + flagsHex + oracleHex + spreadHex;
 }
+
+export const spread = {
+  validate(value) {
+    if (isNaN(value)) {
+      throw new Error('Spread must be a number');
+    }
+    if (Number(value) < 0) {
+      throw new Error('Spread must be positive');
+    }
+    if (Number(value) > 100) {
+      throw new Error('Spread must be less than or equal to 100');
+    }
+  },
+  parse: (value) => parseUnits(value, 7),
+};
 
 /**
  * Chainlink Calculator extension wrapper
  * Provides dynamic pricing using Chainlink oracle feeds
  */
 const chainlinkCalculatorSingleWrapper = createWrapper({
-  name: 'Chainlink ETH <-> ERC20 Price Calculator',
+  name: 'Chainlink WETH ⇄ ERC20 Price Calculator',
   description:
     'Dynamic pricing using Chainlink oracle feeds with support for single oracle configurations',
   hooks: {
     [HookType.MAKER_AMOUNT]: createSchema({
       hint: 'Chainlink oracle configuration',
       fields: {
-        type: {
-          label: 'Configuration Type',
-          type: {
-            validate(value) {
-              if (value !== 'single' && value !== 'double') {
-                throw new Error('Type must be "single" or "double"');
-              }
-            },
-            parse: (value) => value,
-          },
-          hint: 'Configuration type: "single" or "double"',
+        oracle: {
+          label: 'Oracle',
+          type: address,
+          hint: 'Chainlink oracle aggregator address',
         },
-        config: {
-          label: 'Oracle Configuration',
-          type: {
-            validate(value) {
-              if (!value || typeof value !== 'object') {
-                throw new Error('Config must be an object');
-              }
-              // Validate based on structure
-              if (value.oracle) {
-                address.validate(value.oracle);
-              }
-              if (value.spread) {
-                uint256.validate(value.spread);
-              }
-              if (value.inverse !== undefined) {
-                boolean.validate(value.inverse);
-              }
-              // Additional validations for double oracle
-              if (value.oracle1) {
-                address.validate(value.oracle1);
-              }
-              if (value.oracle2) {
-                address.validate(value.oracle2);
-              }
-            },
-            parse: (value) => value,
-          },
-          hint: 'Oracle configuration object with oracle, spread, and inverse properties',
+        inverse: {
+          label: 'Inverse',
+          type: boolean,
+          hint: 'Inverse price calculation',
         },
-      },
-      validate(params) {
-        if (!params.type) {
-          throw new Error('Type field is required');
-        }
-        if (!params.config) {
-          throw new Error('Config field is required');
-        }
+        spread: {
+          label: 'Spread',
+          type: spread,
+          hint: 'Spread in %, e.g. 0.5 (max: 100)',
+        },
       },
     }),
     [HookType.TAKER_AMOUNT]: createSchema({}),
@@ -108,11 +75,20 @@ const chainlinkCalculatorSingleWrapper = createWrapper({
     const { address } = Config.extensions.chainlinkCalculator;
     const target = new Address(address);
     const builder = new ExtensionBuilder();
-    const amountConfig = params[HookType.MAKER_AMOUNT];
+    const config = params[HookType.MAKER_AMOUNT];
     // Set making amount calculation if configured
-    const extraData = encodeChainlinkExtraData(amountConfig.config);
-    builder.withMakingAmountData(target, extraData);
-    builder.withTakingAmountData(target, extraData);
+    const makerData = encodeChainlinkExtraData({
+      oracle: config.oracle,
+      inverse: config.inverse,
+      spread: 1000000000n + config.spread,
+    });
+    const takerData = encodeChainlinkExtraData({
+      oracle: config.oracle,
+      spread: 1000000000n + config.spread,
+      inverse: !config.inverse,
+    });
+    builder.withMakingAmountData(target, makerData);
+    builder.withTakingAmountData(target, takerData);
     // Build and return the Extension
     return builder.build();
   },
