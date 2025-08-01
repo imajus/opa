@@ -3,10 +3,12 @@ import {
   getLimitOrderContract,
   LimitOrderContract,
   Extension,
+  LimitOrder,
 } from '@1inch/limit-order-sdk';
-import { Signature } from 'ethers';
+import { Signature, Contract } from 'ethers';
 import { ErrorDecoder } from 'ethers-decode-error';
 import errorsABI from './errors.abi.json' with { type: 'json' };
+import amountGetterABI from '../abis/IAmountGetter.json' with { type: 'json' };
 
 /**
  * Parse maker traits from a limit order to extract order flags and settings
@@ -69,6 +71,60 @@ export function parseMakerTraits(order) {
     nonceOrEpoch: nonceOrEpochMask,
     series: seriesMask,
   };
+}
+
+/**
+ * Calculate making amount using extension data
+ * @param {import('ethers').Signer} taker - Signer to use for the making amount calculation
+ * @param {import('@1inch/limit-order-sdk').LimitOrderV4Struct} orderData - The order object
+ * @param {Extension} extensionData - Extension object containing makingAmountData
+ * @param {BigInt} takingAmount - The amount of taking asset to calculate making amount for
+ * @param {BigInt} [remainingMakingAmount] - The remaining making amount to calculate making amount for (defaults to order.makingAmount)
+ * @returns {Promise<bigint>} Calculated making amount
+ */
+export async function calculateMakingAmount(
+  taker,
+  orderData,
+  extensionData,
+  takingAmount,
+  remainingMakingAmount = orderData.makingAmount
+) {
+  // Check if makingAmountData is set and not empty
+  if (
+    !extensionData.makingAmountData ||
+    extensionData.makingAmountData === '0x'
+  ) {
+    throw new Error('Extension makingAmountData is not set or empty');
+  }
+  // Use ethers ABI decoder to extract address and calldata from makingAmountData
+  // The data is encoded as address (20 bytes) + bytes (dynamic)
+  // The makingAmountData is not ABI-encoded, but is a simple concatenation of address (20 bytes) + calldata (rest)
+  // So we must manually slice the address and calldata
+  const data = extensionData.makingAmountData;
+  const address = data.slice(0, 42); // 20 bytes + 2 bytes for 0x prefix
+  const calldata = '0x' + data.slice(42); // rest of the data
+  // Create contract instance
+  const contract = new Contract(address, amountGetterABI, taker);
+  try {
+    // Call getMakingAmount function
+    const extension = new Extension(extensionData);
+    const orderHash = LimitOrder.fromDataAndExtension(
+      orderData,
+      extension
+    ).getOrderHash();
+    const result = await contract.getMakingAmount(
+      orderData,
+      extension.encode(),
+      orderHash,
+      await taker.getAddress(),
+      takingAmount,
+      remainingMakingAmount,
+      calldata
+    );
+    return BigInt(result);
+  } catch (error) {
+    throw new Error(`Failed to calculate making amount: ${error.message}`);
+  }
 }
 
 /**

@@ -9,6 +9,7 @@ import { useEthersSigner } from '../../lib/utils/ethers';
 import { decodeOrder } from '../../lib/utils/encoding';
 import { getExtensionConfig } from '../../lib/utils/extensions';
 import {
+  calculateMakingAmount,
   fillOrder,
   getLimitOrderContract,
   parseMakerTraits,
@@ -68,6 +69,9 @@ export default function FillOrderPage() {
   const [tokensData, setTokensData] = useState(null);
   const [takerTokenBalance, setTakerTokenBalance] = useState('0');
   const [isLoadingTokens, setIsLoadingTokens] = useState(false);
+
+  // State for calculated maker amount
+  const [calculatedMakerAmount, setCalculatedMakerAmount] = useState(null);
 
   // Initialize from URL parameters
   useEffect(() => {
@@ -232,17 +236,40 @@ export default function FillOrderPage() {
     return tokensData[orderData.order.takerAsset.toLowerCase()];
   };
 
-  // Format token amounts according to their decimals
+  // Format token amounts according to their decimals, capped to 10 symbols max
   const formatTokenAmount = (amount, tokenAddress) => {
     if (!tokensData || !amount) return amount;
     const token = tokensData[tokenAddress?.toLowerCase()];
     if (!token) return amount;
     try {
+      let formatted;
       // If amount is already a string (from order), parse and format it
       if (typeof amount === 'string') {
-        return formatUnits(parseUnits(amount, token.decimals), token.decimals);
+        formatted = formatUnits(
+          parseUnits(amount, token.decimals),
+          token.decimals
+        );
+      } else {
+        formatted = formatUnits(amount, token.decimals);
       }
-      return formatUnits(amount, token.decimals);
+      // Cap to 10 symbols maximum
+      if (formatted.length > 10) {
+        const num = parseFloat(formatted);
+        if (num >= 1000000) {
+          // Use scientific notation for very large numbers
+          return num.toExponential(3);
+        } else if (num >= 1) {
+          // Round to fit within 10 characters
+          const significantDigits = 10 - formatted.split('.')[0].length - 1; // Account for decimal point
+          return num.toFixed(Math.max(0, significantDigits));
+        } else {
+          // For small numbers, use scientific notation or truncate
+          return num < 0.0001
+            ? num.toExponential(2)
+            : formatted.substring(0, 10);
+        }
+      }
+      return formatted;
     } catch {
       return amount;
     }
@@ -281,12 +308,41 @@ export default function FillOrderPage() {
     );
   };
 
+  // Calculate maker amount when order data changes
+  useEffect(() => {
+    const calculateMakerAmount = async () => {
+      if (!orderData || !tokensData) {
+        setCalculatedMakerAmount(null);
+        return;
+      }
+      // Try to calculate making amount using extension if available
+      if (orderData.extension) {
+        try {
+          const calculatedAmount = await calculateMakingAmount(
+            signer,
+            orderData.order,
+            orderData.extension,
+            BigInt(orderData.order.takingAmount)
+          );
+          setCalculatedMakerAmount(calculatedAmount);
+        } catch (error) {
+          console.warn(
+            'Failed to calculate making amount, falling back to static amount:',
+            error
+          );
+        }
+      }
+    };
+    calculateMakerAmount();
+  }, [orderData, tokensData]);
+
   // Get formatted amounts using token decimals
   const getMakerAmount = () => {
     if (!orderData || !tokensData) return '0';
+    const amount = calculatedMakerAmount ?? orderData.order.makingAmount;
     const makerToken = getMakerToken();
-    if (!makerToken) return formatEther(orderData.order.makingAmount);
-    return formatUnits(orderData.order.makingAmount, makerToken.decimals);
+    if (!makerToken) return formatEther(amount);
+    return formatUnits(amount, makerToken.decimals);
   };
 
   const getTakerAmount = () => {
