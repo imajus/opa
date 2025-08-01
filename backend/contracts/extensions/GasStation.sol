@@ -7,7 +7,7 @@ import "@1inch/limit-order-protocol-contract/contracts/interfaces/IPostInteracti
 import "@1inch/limit-order-protocol-contract/contracts/interfaces/IOrderMixin.sol";
 import "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./IAggregationRouter.sol";
+import "../interfaces/IAggregationRouter.sol";
 
 /// @notice Interface for Aave v3 flash loan receiver
 interface IFlashLoanReceiver {
