@@ -7,7 +7,6 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   log('===========================================');
 
   // All contracts should be deployed by now due to dependencies
-  const chainlinkCalculator = await deployments.get('ChainlinkCalculator');
   const dutchAuctionCalculator = await deployments.get(
     'DutchAuctionCalculator'
   );
@@ -15,7 +14,6 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const flashLoanAdapter = await deployments.get('FlashLoanAdapter');
   const gasStation = await deployments.get('GasStation');
 
-  log(`ChainlinkCalculator deployed at: ${chainlinkCalculator.address}`);
   log(`DutchAuctionCalculator deployed at: ${dutchAuctionCalculator.address}`);
   log(`RangeAmountCalculator deployed at: ${rangeAmountCalculator.address}`);
   log(`FlashLoanAdapter deployed at: ${flashLoanAdapter.address}`);
@@ -25,7 +23,6 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
 
 module.exports.tags = ['AllExtensions'];
 module.exports.dependencies = [
-  'ChainlinkCalculator',
   'DutchAuctionCalculator',
   'RangeAmountCalculator',
   'GasStation',

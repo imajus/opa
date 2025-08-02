@@ -124,7 +124,7 @@ Extensions provide advanced functionality like dynamic pricing, gas optimization
 ### Adding Single Extension
 
 ```javascript
-import { chainlinkCalculator } from './src/extensions/chainlink-calculator.js';
+import { dutchAuctionCalculator } from './src/extensions/dutch-auction-calculator.js';
 
 const builder = new OrderBuilder(
   makerAsset,
@@ -133,8 +133,8 @@ const builder = new OrderBuilder(
   takerAmount
 );
 
-// Add Chainlink price calculator
-builder.addExtension(chainlinkCalculator);
+// Add Dutch auction calculator
+builder.addExtension(dutchAuctionCalculator);
 
 const result = await builder.build(signer); // chainId from config
 ```
@@ -158,33 +158,7 @@ try {
 
 ### Extension Configuration Examples
 
-#### Chainlink Oracle Pricing
 
-```javascript
-import { chainlinkCalculator } from './src/extensions/chainlink-calculator.js';
-
-const builder = new OrderBuilder(
-  '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
-  '1000000000', // 1000 USDC
-  '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
-  '0' // Dynamic amount based on oracle
-);
-
-// Configure for ETH/USD oracle with 1% spread
-const params = {
-  makerAmount: {
-    type: 'single',
-    config: {
-      oracle: '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419', // ETH/USD
-      spread: '10000000', // 1% in 1e9 units
-      inverse: false,
-    },
-  },
-};
-
-builder.addExtension(chainlinkCalculator);
-const result = await builder.build(signer, params); // Pass params to extensions
-```
 
 #### Dutch Auction
 
@@ -254,7 +228,7 @@ Adds an extension wrapper with automatic collision detection.
 - `TypeError`: If wrapper is invalid
 
 ```javascript
-builder.addExtension(chainlinkCalculator);
+builder.addExtension(dutchAuctionCalculator);
 ```
 
 ##### `build(signer: Signer, params?: object): Promise<OrderResult>`
@@ -478,42 +452,7 @@ async function createDutchAuction() {
 }
 ```
 
-### Example 3: Oracle-Based Pricing
 
-```javascript
-import { OrderBuilder } from './src/order-builder.js';
-import { chainlinkCalculator } from './src/extensions/chainlink-calculator.js';
-
-async function createOracleOrder() {
-  const builder = new OrderBuilder(
-    '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // USDC
-    '0', // Dynamic amount
-    '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
-    '1000000000000000000' // 1 WETH
-  );
-
-  // Use ETH/USD Chainlink oracle with 0.5% spread
-  const params = {
-    makerAmount: {
-      type: 'single',
-      config: {
-        oracle: '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419',
-        spread: '5000000', // 0.5% in 1e9 units
-        inverse: true, // Get USD amount for ETH
-      },
-    },
-  };
-
-  builder.addExtension(chainlinkCalculator);
-
-  builder
-    .getMakerTraits()
-    .withExpiration(Math.floor(Date.now() / 1000) + 1800) // 30 min
-    .allowPartialFills();
-
-  return await builder.build(signer, params); // Pass params to extensions
-}
-```
 
 ### Example 4: Multi-Extension Order
 

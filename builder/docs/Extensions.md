@@ -15,7 +15,6 @@ npm install @1inch/limit-order-sdk
 ```js
 import {
   gasStation,
-  chainlinkCalculator,
   dutchAuctionCalculator,
   rangeAmountCalculator,
   extensions,
@@ -34,25 +33,7 @@ const extension = gasStation.build();
 // Use `extension` with the 1inch Limit Order SDK
 ```
 
-### Example: Chainlink Calculator (Single Oracle)
 
-```js
-import { chainlinkCalculator, extensionSchemas } from '../src/index.js';
-
-const params = {
-  MAKER_AMOUNT: {
-    type: 'single',
-    config: {
-      oracle: '0xOracleAddress',
-      spread: '1000000', // 0.1% in 1e9 units
-      inverse: false,
-    },
-  },
-};
-// Validate params (optional, recommended)
-extensionSchemas.chainlinkCalculator.single.parse(params.MAKER_AMOUNT.config);
-const extension = chainlinkCalculator.build(params);
-```
 
 ### Example: Dutch Auction Calculator
 

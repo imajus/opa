@@ -10,9 +10,7 @@ export default {
     uniswapCalculator: {
       address: '0xCBE374BF9650B783b8e945DdC626273E74A4CB65',
     },
-    chainlinkCalculator: {
-      address: '0x644ea330f200a1cfde1558e0ebb2e12a642f1900',
-    },
+
     dutchAuctionCalculator: {
       address: '0xb4a98c55aA4A179516e98e12b3042CF95e739cD0',
     },
