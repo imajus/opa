@@ -3,6 +3,6 @@ main = "src/index.js"
 compatibility_date = "2024-01-01"
 
 [vars]
-ALLOWED_ORIGIN = "http://localhost:3000"
+ALLOWED_ORIGIN = "http://localhost:3000,https://opa-577.pages.dev"
 # Sensitive variables like API_AUTH_TOKEN should be set as secrets
 # Use: npx wrangler secret put API_AUTH_TOKEN 
