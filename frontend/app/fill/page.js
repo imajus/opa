@@ -254,20 +254,7 @@ function FillOrderPage() {
       }
       // Cap to 10 symbols maximum
       if (formatted.length > 10) {
-        const num = parseFloat(formatted);
-        if (num >= 1000000) {
-          // Use scientific notation for very large numbers
-          return num.toExponential(3);
-        } else if (num >= 1) {
-          // Round to fit within 10 characters
-          const significantDigits = 10 - formatted.split('.')[0].length - 1; // Account for decimal point
-          return num.toFixed(Math.max(0, significantDigits));
-        } else {
-          // For small numbers, use scientific notation or truncate
-          return num < 0.0001
-            ? num.toExponential(2)
-            : formatted.substring(0, 10);
-        }
+        return formatted.substring(0, 10);
       }
       return formatted;
     } catch {
