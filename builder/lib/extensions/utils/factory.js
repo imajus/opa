@@ -4,7 +4,7 @@
  * This factory function validates the configuration and returns a wrapper object
  * that provides schema validation, parameter building, and metadata for LOP extensions.
  *
- * @param {WrapperConfig} blueprint - Wrapper configuration object
+ * @param {ExtensionWrapperConfig} blueprint - Wrapper configuration object
  * @returns {ExtensionWrapper} Standardized extension wrapper with validation and build capabilities
  */
 export function createWrapper({ name, description, hooks, build }) {

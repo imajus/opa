@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../extensions/IAggregationRouter.sol";
+import "../interfaces/IAggregationRouter.sol";
 
 /**
  * @title MockAggregationRouter

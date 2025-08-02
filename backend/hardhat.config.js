@@ -3,6 +3,9 @@ require('@nomicfoundation/hardhat-ethers');
 require('@nomicfoundation/hardhat-chai-matchers');
 require('hardhat-deploy');
 
+// Load custom tasks
+require('./tasks/get-expected-return');
+
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   solidity: {

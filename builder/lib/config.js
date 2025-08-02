@@ -9,6 +9,9 @@ export default {
     oneInchCalculator: {
       address: '0xBf2d92E18f6C84ed809fdF2023F812502b581208',
     },
+    uniswapCalculator: {
+      address: '0xCBE374BF9650B783b8e945DdC626273E74A4CB65',
+    },
     chainlinkCalculator: {
       address: '0x644ea330f200a1cfde1558e0ebb2e12a642f1900',
     },
