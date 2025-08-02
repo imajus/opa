@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import gasStation from '../../lib/extensions/gas-station.js';
+import gasStation from '../../lib/extensions/GasStation.js';
 import { HookType } from '../../lib/constants.js';
 import { Extension } from '@1inch/limit-order-sdk';
 
@@ -37,8 +37,8 @@ describe('Gas Station Extension Wrapper', function () {
   });
 
   describe('extension building', function () {
-    it('should build a valid Extension instance', function () {
-      const extension = gasStation.build(emptyConfig);
+    it('should build a valid Extension instance', async function () {
+      const extension = await gasStation.build(emptyConfig);
       expect(extension).to.be.instanceOf(Extension);
       expect(extension.makingAmountData).to.not.equal('0x');
       expect(extension.takingAmountData).to.not.equal('0x');
@@ -46,8 +46,8 @@ describe('Gas Station Extension Wrapper', function () {
       expect(extension.postInteraction).to.not.equal('0x');
     });
 
-    it('should include all required hook configurations', function () {
-      const extension = gasStation.build(emptyConfig);
+    it('should include all required hook configurations', async function () {
+      const extension = await gasStation.build(emptyConfig);
       expect(extension).to.be.instanceOf(Extension);
       expect(extension.makingAmountData).to.not.equal('0x');
       expect(extension.takingAmountData).to.not.equal('0x');
@@ -57,8 +57,8 @@ describe('Gas Station Extension Wrapper', function () {
   });
 
   describe('integration scenarios', function () {
-    it('should work in gasless trading scenario', function () {
-      const extension = gasStation.build(emptyConfig);
+    it('should work in gasless trading scenario', async function () {
+      const extension = await gasStation.build(emptyConfig);
       expect(extension).to.be.instanceOf(Extension);
       expect(extension.makingAmountData).to.not.equal('0x');
       expect(extension.takingAmountData).to.not.equal('0x');

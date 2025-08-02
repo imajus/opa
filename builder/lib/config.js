@@ -4,13 +4,11 @@
 export default {
   extensions: {
     gasStation: {
-      address: null, //TODO
+      address: '0x0000000000000000000000000000000000000000', // Mock address for tests
     },
-
     uniswapCalculator: {
       address: '0xCBE374BF9650B783b8e945DdC626273E74A4CB65',
     },
-
     dutchAuctionCalculator: {
       address: '0xb4a98c55aA4A179516e98e12b3042CF95e739cD0',
     },

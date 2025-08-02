@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Extension } from '@1inch/limit-order-sdk';
-import { OrderBuilder, HookCollisionError } from '../lib/order-builder.js';
+import { OrderBuilder, HookCollisionError } from '../lib/OrderBuilder.js';
 import { HookType } from '../lib/constants.js';
 
 const validMakerAsset = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48';
@@ -33,6 +33,9 @@ function initSigner(extra = {}) {
       .fn()
       .mockResolvedValue('0x1234567890123456789012345678901234567890'),
     signTypedData: vi.fn().mockResolvedValue('0xmocksignature123'),
+    provider: {
+      getNetwork: vi.fn().mockResolvedValue({ chainId: 1 }),
+    },
     ...extra,
   };
 }
@@ -262,8 +265,11 @@ describe('OrderBuilder', function () {
       const signer = initSigner({
         getAddress: vi.fn().mockRejectedValue(new Error('Signer error')),
         signTypedData: vi.fn(),
+        provider: {
+          getNetwork: vi.fn().mockResolvedValue({ chainId: 1 }),
+        },
       });
-      await expect(builder.build(signer, 1)).rejects.toThrow('Signer error');
+      await expect(builder.build(signer)).rejects.toThrow('Signer error');
     });
 
     it('should validate basic parameters', function () {
@@ -293,17 +299,16 @@ describe('OrderBuilder', function () {
   });
 
   describe('_combineExtensions method', function () {
-    it('should return Extension object when no extensions', function () {
+    it('should return undefined when no extensions', async function () {
       const builder = initBuilder();
-      const result = builder._combineExtensions({});
-      expect(result).to.exist;
-      expect(result).to.be.instanceOf(Extension);
+      const result = await builder._combineExtensions({});
+      expect(result).to.be.undefined;
     });
 
-    it('should handle single extension', function () {
+    it('should handle single extension', async function () {
       const builder = initBuilder();
       const extension = initExtension({
-        build: vi.fn().mockReturnValue({
+        build: vi.fn().mockResolvedValue({
           makingAmountData: '0x1234',
           takingAmountData: '0x',
           preInteraction: '0x',
@@ -313,17 +318,17 @@ describe('OrderBuilder', function () {
       });
       builder.addExtension(extension);
       const params = { testParam: 'value' };
-      const result = builder._combineExtensions(params);
+      const result = await builder._combineExtensions(params);
       expect(extension.build).toHaveBeenCalledWith(params, undefined);
       expect(result).to.exist;
       expect(result).to.be.instanceOf(Extension);
       expect(result.makingAmountData).to.equal('0x1234');
     });
 
-    it('should handle multiple extensions', function () {
+    it('should handle multiple extensions', async function () {
       const builder = initBuilder();
       const extension1 = initExtension({
-        build: vi.fn().mockReturnValue({
+        build: vi.fn().mockResolvedValue({
           makingAmountData: '0x1111',
           takingAmountData: '0x',
           preInteraction: '0x',
@@ -332,7 +337,7 @@ describe('OrderBuilder', function () {
         schemas: { [HookType.MAKER_AMOUNT]: {} },
       });
       const extension2 = initExtension({
-        build: vi.fn().mockReturnValue({
+        build: vi.fn().mockResolvedValue({
           makingAmountData: '0x',
           takingAmountData: '0x2222',
           preInteraction: '0x',
@@ -343,7 +348,7 @@ describe('OrderBuilder', function () {
       builder.addExtension(extension1);
       builder.addExtension(extension2);
       const params = { testParam: 'value' };
-      const result = builder._combineExtensions(params);
+      const result = await builder._combineExtensions(params);
       expect(extension1.build).toHaveBeenCalledWith(params, undefined);
       expect(extension2.build).toHaveBeenCalledWith(params, undefined);
       expect(result).to.exist;

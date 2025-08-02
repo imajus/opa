@@ -90,7 +90,7 @@ describe('Factory Utils', function () {
       expect(errors).to.have.property('preInteraction');
     });
 
-    it('should build extension with validated parameters', function () {
+    it('should build extension with validated parameters', async function () {
       const wrapper = createWrapper(validConfig);
       const params = {
         makerAmount: {
@@ -98,14 +98,14 @@ describe('Factory Utils', function () {
           maxAmount: '2000',
         },
       };
-      const extension = wrapper.build(params);
+      const extension = await wrapper.build(params);
 
       expect(extension).to.have.property('type', 'Extension');
       expect(extension).to.have.property('params');
       expect(extension.params).to.have.property('makerAmount');
     });
 
-    it('should throw on invalid build parameters', function () {
+    it('should throw on invalid build parameters', async function () {
       const wrapper = createWrapper(validConfig);
       const invalidParams = {
         makerAmount: {
@@ -114,12 +114,12 @@ describe('Factory Utils', function () {
         },
       };
 
-      expect(() => wrapper.build(invalidParams)).to.throw();
+      await expect(wrapper.build(invalidParams)).rejects.toThrow();
     });
 
-    it('should handle empty parameters gracefully', function () {
+    it('should handle empty parameters gracefully', async function () {
       const wrapper = createWrapper(validConfig);
-      const extension = wrapper.build({});
+      const extension = await wrapper.build({});
 
       expect(extension).to.have.property('type', 'Extension');
       expect(extension.params).to.deep.equal({});
