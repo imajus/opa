@@ -243,15 +243,15 @@ function CreateOrderForm() {
       return null;
     }
     return (
-      <div className="space-y-6">
-        <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+      <>
+        <h3 className="text-lg font-semibold text-gray-900 pb-2">
           Extension Parameters
         </h3>
         {selectedExtensions.map((extensionId) => {
           const config = getExtensionConfig(extensionId);
           if (!config) return null;
           return (
-            <div key={extensionId} className="bg-gray-50 p-4 rounded-lg">
+            <div key={extensionId} className="p-4">
               <h4 className="text-md font-medium text-gray-800 mb-3">
                 {config.name}
               </h4>
@@ -289,13 +289,13 @@ function CreateOrderForm() {
             </div>
           );
         })}
-      </div>
+      </>
     );
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-4 pb-12">
-      <div className="container mx-auto px-4 max-w-4xl">
+    <div className="bg-gray-50 pt-4 pb-12">
+      <div className="container mx-auto px-4 max-w-8xl">
         {/* Header */}
         <div className="mb-8">
           <nav className="text-sm breadcrumbs mb-4">
@@ -319,7 +319,7 @@ function CreateOrderForm() {
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
             {isSimpleOrder ? 'Create Simple Order' : 'Create Strategy Order'}
           </h1>
-          {!isSimpleOrder && selectedExtensions.length > 0 && (
+          {/* {!isSimpleOrder && selectedExtensions.length > 0 && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
               <h3 className="text-blue-900 font-semibold mb-2">
                 Selected Strategy
@@ -338,154 +338,168 @@ function CreateOrderForm() {
                 })}
               </div>
             </div>
-          )}
+          )} */}
         </div>
 
-        {/* Order Parameters Form */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">
-            Order Parameters
-          </h3>
-          <div className="space-y-6">
-            {/* Core Trading Parameters */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <AssetAddressInput
-                label="Maker Asset (Token Address)"
-                value={orderParams.makerAsset}
-                onChange={(value) => handleParamChange('makerAsset', value)}
-                placeholder="Search tokens or enter address (0x...)"
-                required={true}
-                error={validationErrors.makerAsset}
-                hint="Search for a token or enter its contract address"
-              />
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Maker Amount *
-                </label>
-                <TokenAmountField
-                  value={orderParams.makerAmount}
-                  onChange={(value) => handleParamChange('makerAmount', value)}
-                  placeholder="Amount to sell (e.g. 1.5)"
-                  required
+        {/* Order Parameters and Extensions Grid */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+          {/* Order Parameters Form */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">
+              Order Parameters
+            </h3>
+            <div className="space-y-6">
+              {/* Core Trading Parameters */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <AssetAddressInput
+                  label="Maker Asset (Token Address)"
+                  value={orderParams.makerAsset}
+                  onChange={(value) => handleParamChange('makerAsset', value)}
+                  placeholder="Search tokens or enter address (0x...)"
+                  required={true}
+                  error={validationErrors.makerAsset}
+                  hint="Search for a token or enter its contract address"
                 />
-                {validationErrors.makerAmount && (
-                  <p className="text-red-600 text-sm mt-1">
-                    {validationErrors.makerAmount}
-                  </p>
-                )}
-              </div>
 
-              <AssetAddressInput
-                label="Taker Asset (Token Address)"
-                value={orderParams.takerAsset}
-                onChange={(value) => handleParamChange('takerAsset', value)}
-                placeholder="Search tokens or enter address (0x...)"
-                required={true}
-                error={validationErrors.takerAsset}
-                hint="Search for a token or enter its contract address"
-              />
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Taker Amount *
-                </label>
-                <TokenAmountField
-                  value={orderParams.takerAmount}
-                  onChange={(value) => handleParamChange('takerAmount', value)}
-                  placeholder="Amount to receive (e.g. 1.5)"
-                  required
-                />
-                {validationErrors.takerAmount && (
-                  <p className="text-red-600 text-sm mt-1">
-                    {validationErrors.takerAmount}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Additional Parameters */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Receiver Address
-                </label>
-                <input
-                  type="text"
-                  value={orderParams.receiver}
-                  onChange={(e) =>
-                    handleParamChange('receiver', e.target.value)
-                  }
-                  placeholder="Leave empty to use maker address"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent text-gray-900 placeholder-gray-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Expiry Time *
-                </label>
-                <input
-                  type="datetime-local"
-                  value={orderParams.expiry}
-                  onChange={(e) => handleParamChange('expiry', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent text-gray-900 placeholder-gray-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nonce
-                </label>
-                <input
-                  type="number"
-                  value={orderParams.nonce}
-                  onChange={(e) => handleParamChange('nonce', e.target.value)}
-                  placeholder="0"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent text-gray-900 placeholder-gray-500"
-                />
-              </div>
-            </div>
-
-            {/* Order Traits */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Order Options
-              </label>
-              <div className="space-y-2">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={orderParams.allowPartialFills}
-                    onChange={(e) =>
-                      handleParamChange('allowPartialFills', e.target.checked)
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Maker Amount *
+                  </label>
+                  <TokenAmountField
+                    value={orderParams.makerAmount}
+                    onChange={(value) =>
+                      handleParamChange('makerAmount', value)
                     }
-                    className="mr-2 h-4 w-4 text-primary-orange focus:ring-primary-orange border-gray-300 rounded"
+                    placeholder="Amount to sell (e.g. 1.5)"
+                    required
                   />
-                  <span className="text-sm text-gray-700">
-                    Allow partial fills
-                  </span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={orderParams.allowMultipleFills}
-                    onChange={(e) =>
-                      handleParamChange('allowMultipleFills', e.target.checked)
+                  {validationErrors.makerAmount && (
+                    <p className="text-red-600 text-sm mt-1">
+                      {validationErrors.makerAmount}
+                    </p>
+                  )}
+                </div>
+
+                <AssetAddressInput
+                  label="Taker Asset (Token Address)"
+                  value={orderParams.takerAsset}
+                  onChange={(value) => handleParamChange('takerAsset', value)}
+                  placeholder="Search tokens or enter address (0x...)"
+                  required={true}
+                  error={validationErrors.takerAsset}
+                  hint="Search for a token or enter its contract address"
+                />
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Taker Amount *
+                  </label>
+                  <TokenAmountField
+                    value={orderParams.takerAmount}
+                    onChange={(value) =>
+                      handleParamChange('takerAmount', value)
                     }
-                    className="mr-2 h-4 w-4 text-primary-orange focus:ring-primary-orange border-gray-300 rounded"
+                    placeholder="Amount to receive (e.g. 1.5)"
+                    required
                   />
-                  <span className="text-sm text-gray-700">
-                    Allow multiple fills
-                  </span>
+                  {validationErrors.takerAmount && (
+                    <p className="text-red-600 text-sm mt-1">
+                      {validationErrors.takerAmount}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Additional Parameters */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Receiver Address
+                  </label>
+                  <input
+                    type="text"
+                    value={orderParams.receiver}
+                    onChange={(e) =>
+                      handleParamChange('receiver', e.target.value)
+                    }
+                    placeholder="Leave empty to use maker address"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent text-gray-900 placeholder-gray-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Expiry Time *
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={orderParams.expiry}
+                    onChange={(e) =>
+                      handleParamChange('expiry', e.target.value)
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent text-gray-900 placeholder-gray-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nonce
+                  </label>
+                  <input
+                    type="number"
+                    value={orderParams.nonce}
+                    onChange={(e) => handleParamChange('nonce', e.target.value)}
+                    placeholder="0"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent text-gray-900 placeholder-gray-500"
+                  />
+                </div>
+              </div>
+
+              {/* Order Traits */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Order Options
                 </label>
+                <div className="space-y-2">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={orderParams.allowPartialFills}
+                      onChange={(e) =>
+                        handleParamChange('allowPartialFills', e.target.checked)
+                      }
+                      className="mr-2 h-4 w-4 text-primary-orange focus:ring-primary-orange border-gray-300 rounded"
+                    />
+                    <span className="text-sm text-gray-700">
+                      Allow partial fills
+                    </span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={orderParams.allowMultipleFills}
+                      onChange={(e) =>
+                        handleParamChange(
+                          'allowMultipleFills',
+                          e.target.checked
+                        )
+                      }
+                      className="mr-2 h-4 w-4 text-primary-orange focus:ring-primary-orange border-gray-300 rounded"
+                    />
+                    <span className="text-sm text-gray-700">
+                      Allow multiple fills
+                    </span>
+                  </label>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Extension Parameters */}
-        {renderExtensionFields()}
+          {/* Extension Parameters */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            {renderExtensionFields()}
+          </div>
+        </div>
 
         {/* Error Display */}
         {submitError && (
@@ -536,7 +550,7 @@ export default function CreateOrderPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gray-50 py-8 flex items-center justify-center">
+        <div className="bg-gray-50 py-8 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-orange mx-auto"></div>
             <p className="mt-4 text-gray-600">Loading order creation form...</p>

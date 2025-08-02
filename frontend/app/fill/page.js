@@ -1281,7 +1281,7 @@ function FillOrderPage() {
   if (isLoadingOrder) {
     return (
       <div className="min-h-screen bg-gray-50 pt-4 pb-12">
-        <div className="container mx-auto px-4 max-w-4xl">
+        <div className="container mx-auto px-4 max-w-8xl">
           <div className="text-center">
             <h1 className="text-4xl font-bold text-gray-900 mb-4">
               Fill Limit Order
@@ -1306,7 +1306,7 @@ function FillOrderPage() {
   if (!isValidOrder) {
     return (
       <div className="min-h-screen bg-gray-50 py-8">
-        <div className="container mx-auto px-4 max-w-4xl">
+        <div className="container mx-auto px-4 max-w-8xl">
           <div className="text-center">
             <h1 className="text-4xl font-bold text-gray-900 mb-4">
               Invalid Order
@@ -1327,8 +1327,8 @@ function FillOrderPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container mx-auto px-4 max-w-4xl">
+    <div className="bg-gray-50 py-8">
+      <div className="container mx-auto px-4 max-w-8xl">
         {/* Header */}
         <div className="mb-8">
           <nav className="text-sm breadcrumbs mb-4">
@@ -1347,14 +1347,20 @@ function FillOrderPage() {
           </p>
         </div>
 
-        {/* Order Summary */}
-        {renderOrderSummary()}
+        {/* Order Summary and Fill Interface Grid */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+          {/* Order Summary */}
+          <div>{renderOrderSummary()}</div>
 
-        {/* Custom Fill Controls */}
-        {renderCustomFillControls()}
+          {/* Fill Controls and Interface */}
+          <div className="space-y-6">
+            {/* Custom Fill Controls */}
+            {renderCustomFillControls()}
 
-        {/* Fill Interface */}
-        {renderFillInterface()}
+            {/* Fill Interface */}
+            {renderFillInterface()}
+          </div>
+        </div>
 
         {/* Action Buttons */}
         <div className="flex justify-between items-center">
