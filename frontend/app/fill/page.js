@@ -3,7 +3,6 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount } from 'wagmi';
 import { useEthersSigner } from '../../lib/utils/ethers';
 import { decodeOrder } from '../../lib/utils/encoding';
@@ -1009,16 +1008,14 @@ function FillOrderPage() {
     if (!isConnected) {
       return (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-yellow-800 font-semibold mb-2">
-                Connect Your Wallet
-              </h3>
-              <p className="text-yellow-700">
-                You need to connect your wallet to fill this order.
-              </p>
-            </div>
-            <ConnectButton />
+          <div>
+            <h3 className="text-yellow-800 font-semibold mb-2">
+              Connect Your Wallet
+            </h3>
+            <p className="text-yellow-700">
+              Please connect your wallet using the button in the header to fill
+              this order.
+            </p>
           </div>
         </div>
       );
@@ -1283,7 +1280,7 @@ function FillOrderPage() {
 
   if (isLoadingOrder) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
+      <div className="min-h-screen bg-gray-50 pt-4 pb-12">
         <div className="container mx-auto px-4 max-w-4xl">
           <div className="text-center">
             <h1 className="text-4xl font-bold text-gray-900 mb-4">

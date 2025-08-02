@@ -3,7 +3,6 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount } from 'wagmi';
 import { useEthersSigner } from '../../lib/utils/ethers';
 import {
@@ -295,7 +294,7 @@ function CreateOrderForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 pt-4 pb-12">
       <div className="container mx-auto px-4 max-w-4xl">
         {/* Header */}
         <div className="mb-8">
@@ -339,38 +338,6 @@ function CreateOrderForm() {
                 })}
               </div>
             </div>
-          )}
-        </div>
-
-        {/* Wallet Connection */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Wallet Connection
-              </h3>
-              <p className="text-gray-600">
-                {isConnected
-                  ? `Connected as ${address?.slice(0, 6)}...${address?.slice(-4)}`
-                  : 'Connect your wallet to create and sign orders'}
-              </p>
-              {chain && (
-                <p className="text-sm text-gray-500 mt-1">
-                  Network: {chain.name}
-                </p>
-              )}
-            </div>
-            <ConnectButton />
-          </div>
-          {validationErrors.wallet && (
-            <p className="text-red-600 text-sm mt-2">
-              {validationErrors.wallet}
-            </p>
-          )}
-          {validationErrors.network && (
-            <p className="text-red-600 text-sm mt-2">
-              {validationErrors.network}
-            </p>
           )}
         </div>
 
