@@ -4,7 +4,7 @@ import chainlinkSingleCalculator from './extensions/ChainlinkSingleCalculator.js
 import chainlinkDoubleCalculator from './extensions/ChainlinkDoubleCalculator.js';
 import dutchAuctionCalculator from './extensions/DutchAuctionCalculator.js';
 import rangeAmountCalculator from './extensions/RangeAmountCalculator.js';
-import oneInchCalculator from './extensions/OneInchCalculator.js';
+
 import uniswapCalculator from './extensions/UniswapCalculator.js';
 
 export { getLimitOrderContract } from '@1inch/limit-order-sdk';
@@ -22,6 +22,6 @@ export const extensions = {
   chainlinkDoubleCalculator,
   dutchAuctionCalculator,
   rangeAmountCalculator,
-  oneInchCalculator,
+
   uniswapCalculator,
 };
