@@ -5,10 +5,16 @@ import {
   Extension,
   LimitOrder,
 } from '@1inch/limit-order-sdk';
-import { Signature, Contract } from 'ethers';
+import { Signature, Contract, getAddress } from 'ethers';
 import { ErrorDecoder } from 'ethers-decode-error';
 import errorsABI from './errors.abi.json' with { type: 'json' };
 import amountGetterABI from '../abis/IAmountGetter.json' with { type: 'json' };
+import createERC20Contract from './contracts/erc20.js';
+import Config from './config';
+import gasStationWrapper from './extensions/GasStation';
+import uniswapCalculatorWrapper from './extensions/UniswapCalculator';
+import dutchAuctionCalculatorWrapper from './extensions/DutchAuctionCalculator';
+import rangeAmountCalculatorWrapper from './extensions/RangeAmountCalculator';
 
 /**
  * Parse maker traits from a limit order to extract order flags and settings
@@ -206,6 +212,69 @@ export async function approveAssetSpending(signer, asset, value) {
 }
 
 /**
+ * Reverse lookup extension by address
+ * @param {string} address - Extension address
+ * @returns {Extension} Extension instance
+ */
+export function lookupExtensionByAddress(address) {
+  const comp = getAddress(address);
+  const [key] =
+    Object.entries(Config.extensions).find(
+      ([, extension]) => getAddress(extension.address) === comp
+    ) ?? [];
+  if (!key) {
+    return null;
+  }
+  switch (key) {
+    case 'gasStation':
+      return gasStationWrapper;
+    case 'uniswapCalculator':
+      return uniswapCalculatorWrapper;
+    case 'dutchAuctionCalculator':
+      return dutchAuctionCalculatorWrapper;
+    case 'rangeAmountCalculator':
+      return rangeAmountCalculatorWrapper;
+    default:
+      throw new Error(`Unknown extension ${key}`);
+  }
+}
+
+/**
+ * Call onFill callback for all extensions present in the order
+ * @param {import('ethers').Signer} signer - Ethers signer instance
+ * @param {import('@1inch/limit-order-sdk').LimitOrderV4Struct} order - The order object
+ * @param {BigInt} amount - Amount being filled
+ * @param {Extension} extension - Extension data
+ */
+export async function callExtensionsCallback(signer, order, amount, extension) {
+  // Helper to extract address from hex data (first 42 chars, 0x + 40 hex)
+  function extractAddress(data) {
+    if (typeof data !== 'string' || !data.startsWith('0x') || data.length < 42)
+      return null;
+    return data.slice(0, 42).toLowerCase();
+  }
+  // Extract addresses from extension fields
+  const fields = [
+    extension.makingAmountData,
+    extension.takingAmountData,
+    extension.preInteraction,
+    extension.postInteraction,
+  ];
+  const addresses = fields
+    .map(extractAddress)
+    .filter((addr) => addr && /^0x[0-9a-f]{40}$/.test(addr));
+  // Deduplicate addresses
+  const uniqueAddresses = [...new Set(addresses)];
+  for (const address of uniqueAddresses) {
+    const ext = lookupExtensionByAddress(address);
+    if (ext) {
+      const { onFill } = ext.callbacks;
+      await onFill?.(signer, order, amount);
+    }
+  }
+}
+
+/**
  * Generic function to fill a limit order
  * @param {import('ethers').Signer} signer - Ethers signer instance
  * @param {import('@1inch/limit-order-sdk').LimitOrderV4Struct} order - The order object to fill
@@ -218,18 +287,33 @@ export async function fillOrder(
   signer,
   order,
   signature,
-  extension,
+  extensionData,
   amount = order.takingAmount
 ) {
   const { chainId } = await signer.provider.getNetwork();
   const lopAddress = getLimitOrderContract(chainId);
+
   try {
+    const extension = new Extension(extensionData);
+    // Create ERC20 contract instance for the taker asset
+    const tokenContract = createERC20Contract(order.takerAsset, signer);
+    // Check if user has sufficient balance
+    // const takerAddress = await signer.getAddress();
+    // const balance = await tokenContract.balanceOf(takerAddress);
+    // if (balance < amount) {
+    //   throw new Error(
+    //     `Insufficient balance. Required: ${amount}, Available: ${balance}`
+    //   );
+    // }
+    // Approve token spending using the existing helper function
+    await approveAssetSpending(signer, tokenContract, amount);
+    // Call extension onFill callbacks
+    await callExtensionsCallback(signer, order, amount, extension);
+    // Prepare & send fill order transaction
     const calldata = LimitOrderContract.getFillOrderArgsCalldata(
       order,
       signature,
-      new TakerTraits(0n, {
-        extension: new Extension(extension),
-      }),
+      new TakerTraits(0n, { extension }),
       amount
     );
     const tx = await signer.sendTransaction({

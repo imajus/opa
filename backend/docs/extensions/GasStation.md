@@ -9,12 +9,15 @@
 
 The **Gas Station Extension** enables gasless trading on the 1inch Limit Order Protocol by automatically covering gas costs and fees through flash loans and token swaps. When a taker executes an order through the Gas Station, the extension:
 
-1. **Flash borrows WETH** from Aave v3 to cover gas and fees
-2. **Swaps maker assets** to WETH using 1inch Aggregator
-3. **Reimburses the taker** with gas costs + fee
-4. **Repays the flash loan** with premium
+1. **Flash borrows WETH** from Aave v3 to cover the order's WETH requirement + costs
+2. **Transfers WETH to taker** so they can fulfill the order to the maker
+3. **Receives maker asset** from taker (who got it from the order execution)
+4. **Swaps maker asset to WETH** using Uniswap V3
+5. **Reimburses the taker** with gas costs + fee
+6. **Repays the flash loan** with premium
+7. **Sends excess WETH to maker** (any favorable swap difference)
 
-This creates a seamless gasless experience where takers can execute orders without holding ETH for gas.
+This creates a seamless gasless experience where takers can execute orders without holding ETH for gas or WETH for the order.
 
 ---
 
@@ -24,19 +27,24 @@ This creates a seamless gasless experience where takers can execute orders witho
 graph TD
     A[Taker Executes Order] --> B[Gas Station preInteraction]
     B --> C[Flash Loan WETH from Aave]
-    C --> D[1inch LOP Order Execution]
-    D --> E[Gas Station postInteraction]
-    E --> F[Swap Maker Asset → WETH]
-    F --> G[Reimburse Taker Gas + Fee]
-    G --> H[Repay Flash Loan + Premium]
-    H --> I[Transaction Complete]
+    C --> D[Transfer WETH to Taker]
+    D --> E[1inch LOP Order Execution]
+    E --> F[Taker → Maker: Receives DAI]
+    F --> G[Taker → Maker: Sends WETH]
+    G --> H[Gas Station postInteraction]
+    H --> I[Transfer DAI from Taker to Gas Station]
+    I --> J[Swap DAI → WETH via Uniswap V3]
+    J --> K[Reimburse Taker Gas + Fee]
+    K --> L[Repay Flash Loan + Premium]
+    L --> M[Send Excess WETH to Maker]
+    M --> N[Transaction Complete]
 ```
 
 ### Key Components
 
-- **🚉 Gas Station**: Core extension implementing `IAmountGetter`, `IPreInteraction`, `IPostInteraction`
+- **🚉 Gas Station**: Core extension implementing `IPreInteraction`, `IPostInteraction`
 - **⚡ Flash Loan Adapter**: Aave v3 integration for WETH borrowing via delegatecall
-- **🔄 1inch Aggregator**: Real-time price discovery and token swapping
+- **🔄 Uniswap V3**: Real-time price discovery and token swapping
 - **🏦 Aave v3 Pool**: Flash loan provider for WETH liquidity
 
 ---
@@ -51,8 +59,8 @@ graph TD
 
 ### ✅ **Real-time Pricing**
 
-- Integrates with 1inch Aggregator v6 for spot price discovery
-- Fallback pricing mechanism for maximum reliability
+- Integrates with Uniswap V3 for spot price discovery
+- Automatic pool selection across multiple fee tiers (0.05%, 0.3%, 1%)
 - Supports all ERC20 tokens with WETH pairs
 
 ### ✅ **Flash Loan Optimization**
@@ -77,7 +85,8 @@ graph TD
 constructor(
     uint256 takerFeeBps,        // Taker fee in basis points (100 = 1%)
     uint256 gasStipend,         // Gas allowance for execution (150,000)
-    address aggregationRouter,  // 1inch Aggregation Router v6
+    address uniswapFactory,     // Uniswap V3 Factory
+    address swapRouter,         // Uniswap V3 Swap Router
     address weth,              // WETH token address
     address aavePool,          // Aave v3 Pool address
     address flashLoanAdapter   // Flash loan adapter address
@@ -92,7 +101,8 @@ constructor(
 const config = {
   takerFeeBps: 100, // 1%
   gasStipend: 150000, // 150k gas
-  aggregationRouter: '0x111111125421cA6dc452d289314280a0f8842A65', // 1inch Router v6
+  uniswapFactory: '0x1F98431c8aD98523631AE4a59f267346ea31F984', // Uniswap V3 Factory
+  swapRouter: '0xE592427A0AEce92De3Edee1F18E0157C05861564', // Uniswap V3 Swap Router
   weth: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // WETH
   aavePool: '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2', // Aave v3 Pool
 };
@@ -104,7 +114,8 @@ const config = {
 const config = {
   takerFeeBps: 100,
   gasStipend: 150000,
-  aggregationRouter: '0x111111125421cA6dc452d289314280a0f8842A65', // 1inch Router v6
+  uniswapFactory: '0x1F98431c8aD98523631AE4a59f267346ea31F984', // Uniswap V3 Factory
+  swapRouter: '0xE592427A0AEce92De3Edee1F18E0157C05861564', // Uniswap V3 Swap Router
   weth: '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270', // WMATIC
   aavePool: '0x794a61358D6845594F94dc1DB02A252b5b4814aD', // Aave v3 Pool
 };
@@ -144,7 +155,20 @@ const order = {
 };
 ```
 
-### 2. Order Execution Flow
+### 2. Required Approvals
+
+```javascript
+// Before execution, taker must approve:
+// 1. WETH spending to LOP (for order execution)
+await wethContract
+  .connect(taker)
+  .approve(limitOrderProtocolAddress, takingAmount);
+
+// 2. Maker asset spending to Gas Station (for swap in postInteraction)
+await daiContract.connect(taker).approve(gasStationAddress, makingAmount);
+```
+
+### 3. Order Execution Flow
 
 ```javascript
 // 1. Taker calls LimitOrderProtocol.fillOrder()
@@ -160,43 +184,16 @@ const fillTx = await limitOrderProtocol
   );
 
 // 2. Gas Station automatically:
-//    - Flash borrows WETH for gas + fees
-//    - Executes the order
-//    - Swaps maker asset (DAI) to WETH
+//    - Flash borrows WETH (takingAmount + costs)
+//    - Transfers WETH to taker
+//    - LOP executes: DAI maker→taker, WETH taker→maker
+//    - Transfers DAI from taker to Gas Station
+//    - Swaps DAI to WETH via Uniswap V3
 //    - Reimburses taker gas costs + fee
-//    - Repays flash loan
+//    - Repays flash loan + premium
+//    - Sends excess WETH to maker
 
 console.log('✅ Gasless order executed successfully!');
-```
-
-### 3. Dynamic Amount Calculation
-
-```javascript
-// Get actual taking amount (includes gas costs)
-const actualTakingAmount = await gasStation.getTakingAmount(
-  order,
-  '0x', // extension data
-  ethers.ZeroHash, // order hash
-  taker.address,
-  order.takingAmount, // threshold
-  order.makingAmount // remaining
-);
-
-console.log(`Taking amount: ${ethers.formatEther(actualTakingAmount)} WETH`);
-// Output: "Taking amount: 0.51025 WETH" (includes ~0.01025 WETH for gas + fees)
-
-// Get actual making amount (deducts gas costs)
-const actualMakingAmount = await gasStation.getMakingAmount(
-  order,
-  '0x', // extension data
-  ethers.ZeroHash, // order hash
-  taker.address,
-  order.makingAmount, // threshold
-  order.makingAmount // remaining
-);
-
-console.log(`Making amount: ${ethers.formatEther(actualMakingAmount)} DAI`);
-// Output: "Making amount: 989.75 DAI" (deducts costs from maker proceeds)
 ```
 
 ---
@@ -209,7 +206,7 @@ console.log(`Making amount: ${ethers.formatEther(actualMakingAmount)} DAI`);
 Total Operation: ≤ 600k gas
 ├── preInteraction (flash loan):     ~150k gas
 ├── executeOperation (callback):     ~200k gas
-├── 1inch swap execution:            ~150k gas
+├── Uniswap V3 swap execution:       ~150k gas
 └── postInteraction (repayment):     ~100k gas
 ```
 
@@ -254,20 +251,11 @@ const gasStation = new ethers.Contract(
   provider
 );
 
-// Calculate actual amounts including gas costs
-const { takingAmount, makingAmount } = await calculateGasStationAmounts(
-  order,
-  gasStation,
-  currentGasPrice
-);
-
 // Create order with Gas Station interactions
 const gaslessOrder = {
   ...baseOrder,
   preInteraction: gasStationAddress,
   postInteraction: gasStationAddress,
-  takingAmount,
-  makingAmount,
 };
 ```
 
@@ -310,11 +298,11 @@ gasStation.on('TakerReimbursed', (taker, gasReimbursement, fee) => {
 
 - Precise cost calculation prevents underpayment
 - Flash loan repayment validation ensures no bad debt
-- Slippage protection on 1inch swaps
+- Slippage protection on Uniswap V3 swaps
 
 ### ✅ **Integration Safety**
 
-- Graceful fallback when 1inch Aggregator fails
+- Graceful fallback when Uniswap V3 pools are unavailable
 - Comprehensive error handling for all external calls
 - Gas limit enforcement prevents infinite loops
 
@@ -322,7 +310,7 @@ gasStation.on('TakerReimbursed', (taker, gasReimbursement, fee) => {
 
 - **Price Volatility**: Rapid token price changes during execution
 - **MEV**: Potential front-running of profitable orders
-- **1inch Dependency**: Relies on 1inch Aggregator availability
+- **Uniswap V3 Dependency**: Relies on Uniswap V3 pool liquidity
 - **Aave Dependency**: Requires sufficient WETH liquidity in Aave
 
 ---
@@ -352,18 +340,6 @@ npx hardhat coverage --testfiles "test/extensions/{GasStation,FlashLoanAdapter}.
 # ✅ FlashLoanAdapter: 100% statement coverage
 # ✅ GasStation: Core logic thoroughly tested
 # ✅ All critical paths and error conditions covered
-```
-
-### Gas Usage Verification
-
-```bash
-# Verify gas usage meets requirements
-npx hardhat test --grep "gas usage"
-
-# Expected results:
-# ✅ getTakingAmount: <35k gas
-# ✅ getMakingAmount: <35k gas
-# ✅ Total operation: ≤600k gas
 ```
 
 ---
@@ -398,9 +374,9 @@ const order = { takingAmount: actualTakingAmount, ... };
 
 #### **"SwapFailed" Error**
 
-- Check 1inch Aggregator availability
+- Check Uniswap V3 pool liquidity
 - Verify maker asset has WETH pair
-- Increase slippage tolerance
+- Ensure pool exists for the token pair
 
 ---
 

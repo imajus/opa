@@ -13,26 +13,25 @@ describe('Gas Station Extension Wrapper', function () {
       expect(errors).to.be.null;
     });
 
-    it('should not accept any parameters except undefined', function () {
-      const anyConfig = {
-        [HookType.MAKER_AMOUNT]: {},
-        [HookType.TAKER_AMOUNT]: {},
+    it('should accept empty objects for pre/post interaction hooks', function () {
+      const configWithEmptyHooks = {
         [HookType.PRE_INTERACTION]: {},
         [HookType.POST_INTERACTION]: {},
       };
-      const errors = gasStation.validate(anyConfig);
-      expect(errors).to.not.be.null;
-      expect(errors).to.have.property('makerAmount');
-      expect(errors.makerAmount).to.be.instanceOf(Error);
-      expect(errors.makerAmount.message).to.include(
-        'does not accept any parameters'
-      );
-      expect(errors).to.have.property('takerAmount');
-      expect(errors.takerAmount).to.be.instanceOf(Error);
-      expect(errors).to.have.property('preInteraction');
-      expect(errors.preInteraction).to.be.instanceOf(Error);
-      expect(errors).to.have.property('postInteraction');
-      expect(errors.postInteraction).to.be.instanceOf(Error);
+      const errors = gasStation.validate(configWithEmptyHooks);
+      expect(errors).to.be.null;
+    });
+
+    it('should accept any parameters since schemas are empty', function () {
+      const configWithAnyParams = {
+        [HookType.PRE_INTERACTION]: { anyField: 'anyValue', number: 123 },
+        [HookType.POST_INTERACTION]: {
+          anotherField: true,
+          nested: { data: 'test' },
+        },
+      };
+      const errors = gasStation.validate(configWithAnyParams);
+      expect(errors).to.be.null;
     });
   });
 
@@ -40,8 +39,6 @@ describe('Gas Station Extension Wrapper', function () {
     it('should build a valid Extension instance', async function () {
       const extension = await gasStation.build(emptyConfig);
       expect(extension).to.be.instanceOf(Extension);
-      expect(extension.makingAmountData).to.not.equal('0x');
-      expect(extension.takingAmountData).to.not.equal('0x');
       expect(extension.preInteraction).to.not.equal('0x');
       expect(extension.postInteraction).to.not.equal('0x');
     });
@@ -49,8 +46,6 @@ describe('Gas Station Extension Wrapper', function () {
     it('should include all required hook configurations', async function () {
       const extension = await gasStation.build(emptyConfig);
       expect(extension).to.be.instanceOf(Extension);
-      expect(extension.makingAmountData).to.not.equal('0x');
-      expect(extension.takingAmountData).to.not.equal('0x');
       expect(extension.preInteraction).to.not.equal('0x');
       expect(extension.postInteraction).to.not.equal('0x');
     });
@@ -60,8 +55,6 @@ describe('Gas Station Extension Wrapper', function () {
     it('should work in gasless trading scenario', async function () {
       const extension = await gasStation.build(emptyConfig);
       expect(extension).to.be.instanceOf(Extension);
-      expect(extension.makingAmountData).to.not.equal('0x');
-      expect(extension.takingAmountData).to.not.equal('0x');
       expect(extension.preInteraction).to.not.equal('0x');
       expect(extension.postInteraction).to.not.equal('0x');
     });

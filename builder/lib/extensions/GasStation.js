@@ -2,13 +2,7 @@ import { ExtensionBuilder, Interaction, Address } from '@1inch/limit-order-sdk';
 import { createWrapper, createSchema } from './utils/factory.js';
 import { HookType } from '../constants.js';
 import Config from '../config.js';
-
-/**
- * Gas Station extension wrapper for 1inch Limit Order Protocol
- *
- * Enables gasless trading where makers can trade stablecoins -> WETH without owning ETH for gas fees.
- * Takers pay gas upfront and get reimbursed via flash loan, swap, and repayment mechanism.
- */
+import createERC20Contract from '@/contracts/erc20.js';
 
 /**
  * Gas Station extension wrapper
@@ -19,46 +13,24 @@ const gasStationWrapper = createWrapper({
   description:
     'Enables gasless trading where makers can trade stablecoins to WETH without owning ETH for gas fees',
   hooks: {
-    [HookType.MAKER_AMOUNT]: createSchema({
-      fields: {},
-      validate(params) {
-        if (params !== undefined) {
-          throw new Error(
-            'Gas Station extension does not accept any parameters'
-          );
-        }
-      },
-    }),
-    [HookType.TAKER_AMOUNT]: createSchema({
-      fields: {},
-      validate(params) {
-        if (params !== undefined) {
-          throw new Error(
-            'Gas Station extension does not accept any parameters'
-          );
-        }
-      },
-    }),
-    [HookType.PRE_INTERACTION]: createSchema({
-      fields: {},
-      validate(params) {
-        if (params !== undefined) {
-          throw new Error(
-            'Gas Station extension does not accept any parameters'
-          );
-        }
-      },
-    }),
-    [HookType.POST_INTERACTION]: createSchema({
-      fields: {},
-      validate(params) {
-        if (params !== undefined) {
-          throw new Error(
-            'Gas Station extension does not accept any parameters'
-          );
-        }
-      },
-    }),
+    [HookType.PRE_INTERACTION]: createSchema({}),
+    [HookType.POST_INTERACTION]: createSchema({}),
+  },
+  callbacks: {
+    async onFill(signer, order) {
+      const { address } = Config.extensions.gasStation;
+      const asset = createERC20Contract(order.makerAsset, signer);
+      const allowance = await asset.allowance(
+        await signer.getAddress(),
+        address
+      );
+      const amount = order.makingAmount;
+      if (allowance >= amount) {
+        return;
+      }
+      const tx = await asset.approve(address, amount);
+      return tx.wait();
+    },
   },
   /**
    * Build function that creates an Extension instance for Gas Station
@@ -69,21 +41,10 @@ const gasStationWrapper = createWrapper({
     const { address } = Config.extensions.gasStation;
     const target = new Address(address);
     const builder = new ExtensionBuilder();
-    builder.withMakingAmountData(
-      target,
-      '0x00' // Empty data - Gas Station uses view functions for calculation
-    );
-    // Set taking amount calculation (reverse calculation for required maker asset)
-    builder.withTakingAmountData(
-      target,
-      '0x00' // Empty data - Gas Station uses view functions for calculation
-    );
-    // Set pre-interaction (flash loan initiation)
-    const preInteraction = new Interaction(target, '0x00');
-    builder.withPreInteraction(preInteraction);
-    // Set post-interaction (swap and repayment)
-    const postInteraction = new Interaction(target, '0x00');
-    builder.withPostInteraction(postInteraction);
+    // Set pre-/post-interaction (flash loan & swap)
+    const data = new Interaction(target, '0x00');
+    builder.withPreInteraction(data);
+    builder.withPostInteraction(data);
     // Build and return the Extension
     return builder.build();
   },

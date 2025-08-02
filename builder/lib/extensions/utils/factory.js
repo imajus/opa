@@ -7,25 +7,7 @@
  * @param {ExtensionWrapperConfig} blueprint - Wrapper configuration object
  * @returns {ExtensionWrapper} Standardized extension wrapper with validation and build capabilities
  */
-export function createWrapper({ name, description, hooks, build }) {
-  // Validate required parameters
-  if (!name || typeof name !== 'string' || name.trim() === '') {
-    throw new Error('name is required and must be a non-empty string');
-  }
-  if (
-    !description ||
-    typeof description !== 'string' ||
-    description.trim() === ''
-  ) {
-    throw new Error('description is required and must be a non-empty string');
-  }
-  if (typeof build !== 'function') {
-    throw new Error('build must be a function');
-  }
-  if (!hooks || typeof hooks !== 'object') {
-    throw new Error('hooks must be an object');
-  }
-
+export function createWrapper({ name, description, hooks, callbacks, build }) {
   return {
     meta: {
       name,
@@ -33,6 +15,7 @@ export function createWrapper({ name, description, hooks, build }) {
       version: '1.0.0',
     },
     schemas: hooks,
+    callbacks: callbacks || {},
     validate(params) {
       const errors = {};
       const hookEntries = Object.entries(hooks);

@@ -115,11 +115,6 @@ async function deployGasStationWithMocks() {
   const mockAavePool = await MockAavePool.deploy();
   await mockAavePool.waitForDeployment();
 
-  // Deploy FlashLoanAdapter
-  const FlashLoanAdapter = await ethers.getContractFactory('FlashLoanAdapter');
-  const flashLoanAdapter = await FlashLoanAdapter.deploy();
-  await flashLoanAdapter.waitForDeployment();
-
   // Deploy basic tokens for testing
   const TokenMock = await ethers.getContractFactory('TokenMock');
   const WrappedTokenMock = await ethers.getContractFactory('WrappedTokenMock');
@@ -144,30 +139,35 @@ async function deployGasStationWithMocks() {
   const takerFeeBps = 100; // 1%
   const gasStipend = 150000; // 150k gas
 
-  // Deploy mock 1inch Aggregation Router
-  const MockAggregationRouter = await ethers.getContractFactory(
-    'MockAggregationRouter'
+  // Deploy mock Uniswap V3 Factory
+  const MockUniswapFactory = await ethers.getContractFactory(
+    'MockUniswapFactory'
   );
-  const mockAggregationRouter = await MockAggregationRouter.deploy();
-  await mockAggregationRouter.waitForDeployment();
+  const mockUniswapFactory = await MockUniswapFactory.deploy();
+  await mockUniswapFactory.waitForDeployment();
+
+  // Deploy mock Uniswap V3 Swap Router
+  const MockSwapRouter = await ethers.getContractFactory('MockSwapRouter');
+  const mockSwapRouter = await MockSwapRouter.deploy();
+  await mockSwapRouter.waitForDeployment();
 
   // Deploy Gas Station
   const GasStation = await ethers.getContractFactory('GasStation');
   const gasStation = await GasStation.deploy(
     takerFeeBps,
     gasStipend,
-    await mockAggregationRouter.getAddress(),
+    await mockUniswapFactory.getAddress(),
+    await mockSwapRouter.getAddress(),
     await weth.getAddress(),
-    await mockAavePool.getAddress(),
-    await flashLoanAdapter.getAddress()
+    await mockAavePool.getAddress()
   );
   await gasStation.waitForDeployment();
 
   return {
     gasStation,
-    flashLoanAdapter,
     mockAavePool,
-    mockAggregationRouter,
+    mockUniswapFactory,
+    mockSwapRouter,
     tokens: {
       usdc: await wrapToken(usdc),
       dai: await wrapToken(dai),
@@ -176,7 +176,8 @@ async function deployGasStationWithMocks() {
     config: {
       takerFeeBps,
       gasStipend,
-      mockAggregationRouter: await mockAggregationRouter.getAddress(),
+      mockUniswapFactory: await mockUniswapFactory.getAddress(),
+      mockSwapRouter: await mockSwapRouter.getAddress(),
     },
   };
 }

@@ -11,12 +11,11 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     'DutchAuctionCalculator'
   );
   const rangeAmountCalculator = await deployments.get('RangeAmountCalculator');
-  const flashLoanAdapter = await deployments.get('FlashLoanAdapter');
   const gasStation = await deployments.get('GasStation');
 
   log(`DutchAuctionCalculator deployed at: ${dutchAuctionCalculator.address}`);
   log(`RangeAmountCalculator deployed at: ${rangeAmountCalculator.address}`);
-  log(`FlashLoanAdapter deployed at: ${flashLoanAdapter.address}`);
+
   log(`GasStation deployed at: ${gasStation.address}`);
   log('===========================================');
 };

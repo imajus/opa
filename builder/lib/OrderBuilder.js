@@ -245,9 +245,11 @@ export class OrderBuilder {
           combined.takingAmountData = result.takingAmountData;
         }
         if (HookType.PRE_INTERACTION in extension.schemas) {
+          this.makerTraits.enablePreInteraction();
           combined.preInteraction = result.preInteraction;
         }
         if (HookType.POST_INTERACTION in extension.schemas) {
+          this.makerTraits.enablePostInteraction();
           combined.postInteraction = result.postInteraction;
         }
       }

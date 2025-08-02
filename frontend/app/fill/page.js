@@ -50,13 +50,9 @@ function FillOrderPage() {
   const [isLoadingOrder, setIsLoadingOrder] = useState(true);
 
   // State for filling process
-  const [currentStep, setCurrentStep] = useState(1); // 1: Approve, 2: Fill
-  const [isApproving, setIsApproving] = useState(false);
   const [isFilling, setIsFilling] = useState(false);
-  const [approvalTxHash, setApprovalTxHash] = useState('');
   const [fillTxHash, setFillTxHash] = useState('');
   const [stepErrors, setStepErrors] = useState({});
-  const [isApprovalComplete, setIsApprovalComplete] = useState(false);
   const [isFillComplete, setIsFillComplete] = useState(false);
 
   // State for custom fill amounts
@@ -98,10 +94,7 @@ function FillOrderPage() {
   // Reset steps when wallet changes
   useEffect(() => {
     if (address) {
-      setCurrentStep(1);
-      setIsApprovalComplete(false);
       setIsFillComplete(false);
-      setApprovalTxHash('');
       setFillTxHash('');
       setStepErrors({});
     }
@@ -427,65 +420,9 @@ function FillOrderPage() {
     }
   };
 
-  const handleApproveToken = async () => {
-    if (!signer || !orderData) {
-      setStepErrors({ approve: 'Please connect your wallet first' });
-      return;
-    }
-    setIsApproving(true);
-    setStepErrors({});
-    try {
-      const { chainId } = await signer.provider.getNetwork();
-      const { takerAmount } = calculateFillAmounts();
-      const lopAddress = getLimitOrderContract(Number(chainId));
-      // Create ERC20 contract instance
-      const tokenContract = new Contract(
-        orderData.order.takerAsset,
-        ERC20_ABI,
-        signer
-      );
-      // Get token info from our loaded data
-      const takerToken = getTakerToken();
-      if (!takerToken) {
-        throw new Error('Token information not loaded');
-      }
-      // Convert amount to wei using token decimals
-      const amountInWei = parseUnits(takerAmount, takerToken.decimals);
-      // Check if user has sufficient balance
-      const balance = BigInt(takerTokenBalance);
-      if (balance < amountInWei) {
-        throw new Error(
-          `Insufficient balance. You need ${takerAmount} ${takerToken.symbol} but only have ${formatUnits(balance, takerToken.decimals)} ${takerToken.symbol}`
-        );
-      }
-      // Submit approval transaction
-      const approveTx = await tokenContract.approve(lopAddress, amountInWei);
-      // Wait for transaction confirmation
-      await approveTx.wait();
-      setApprovalTxHash(approveTx.hash);
-      setIsApprovalComplete(true);
-      setCurrentStep(2);
-    } catch (error) {
-      // Handle user rejection specifically
-      if (error.code === 'ACTION_REJECTED' || error.code === 4001) {
-        setStepErrors({ approve: 'Transaction was rejected by user' });
-      } else if (error.message?.includes('insufficient funds')) {
-        setStepErrors({ approve: 'Insufficient ETH for gas fees' });
-      } else {
-        setStepErrors({ approve: error.message || 'Token approval failed' });
-      }
-    } finally {
-      setIsApproving(false);
-    }
-  };
-
   const handleFillOrder = async () => {
     if (!signer || !orderData) {
       setStepErrors({ fill: 'Please connect your wallet first' });
-      return;
-    }
-    if (!isApprovalComplete) {
-      setStepErrors({ fill: 'Please approve the token first' });
       return;
     }
     setIsFilling(true);
@@ -497,12 +434,13 @@ function FillOrderPage() {
       if (!takerToken) {
         throw new Error('Token information not loaded');
       }
+      const amountInWei = parseUnits(takerAmount, takerToken.decimals);
       const receipt = await fillOrder(
         signer,
         orderData.order,
         orderData.signature,
         orderData.extension,
-        parseUnits(takerAmount, takerToken.decimals) // Pass the custom fill amount
+        amountInWei // Pass the custom fill amount
       );
       setFillTxHash(receipt.hash);
       setIsFillComplete(true);
@@ -1067,30 +1005,26 @@ function FillOrderPage() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-6">Fill Order</h3>
 
-        {/* Step 1: Token Approval */}
+        {/* Single Step: Fill Order (with integrated approval) */}
         <div className="mb-6">
           <div className="flex items-center mb-4">
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold mr-3 ${
-                isApprovalComplete
+                isFillComplete
                   ? 'bg-green-100 text-green-800'
-                  : currentStep === 1
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'bg-gray-100 text-gray-500'
+                  : 'bg-blue-100 text-blue-800'
               }`}
             >
-              {isApprovalComplete ? '✓' : '1'}
+              {isFillComplete ? '✓' : '1'}
             </div>
             <div>
-              <h4 className="font-medium text-gray-900">
-                Approve {getTokenSymbol(orderData.order.takerAsset)}
-              </h4>
+              <h4 className="font-medium text-gray-900">Fill Order</h4>
               <div>
                 <p className="text-sm text-gray-600">
-                  Allow the protocol to spend{' '}
                   {(() => {
-                    const { takerAmount } = calculateFillAmounts();
-                    return `${formatTokenAmount(takerAmount, orderData.order.takerAsset)} ${getTokenSymbol(orderData.order.takerAsset)}`;
+                    const { takerAmount, makerAmount } = calculateFillAmounts();
+                    const isPartial = isPartialFill && fillPercentage < 100;
+                    return `Execute the ${isPartial ? 'partial ' : ''}limit order: pay ${formatTokenAmount(takerAmount, orderData.order.takerAsset)} ${getTokenSymbol(orderData.order.takerAsset)} to receive ${formatTokenAmount(makerAmount, orderData.order.makerAsset)} ${getTokenSymbol(orderData.order.makerAsset)}`;
                   })()}
                 </p>
                 {isLoadingTokens ? (
@@ -1133,46 +1067,40 @@ function FillOrderPage() {
             </div>
           </div>
 
-          {currentStep === 1 && !isApprovalComplete && (
+          {!isFillComplete && (
             <div className="ml-11">
               <button
-                onClick={handleApproveToken}
+                onClick={handleFillOrder}
                 disabled={
-                  isApproving ||
+                  isFilling ||
                   !isValidFillAmount() ||
                   !hasSufficientBalance() ||
                   isLoadingTokens
                 }
                 className={`w-full sm:w-auto font-semibold py-3 px-6 rounded-lg transition-colors ${
-                  isApproving ||
+                  isFilling ||
                   !isValidFillAmount() ||
                   !hasSufficientBalance() ||
                   isLoadingTokens
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-primary-orange hover:bg-orange-600 text-white'
+                    : 'bg-primary-green hover:bg-green-600 text-white'
                 }`}
               >
                 {isLoadingTokens
                   ? 'Loading...'
-                  : isApproving
-                    ? 'Approving...'
+                  : isFilling
+                    ? 'Processing Order...'
                     : (() => {
                         if (!hasSufficientBalance()) {
                           return 'Insufficient Balance';
                         }
-                        const { takerAmount } = calculateFillAmounts();
                         const isPartial = isPartialFill && fillPercentage < 100;
-                        const tokenSymbol = getTokenSymbol(
-                          orderData.order.takerAsset
-                        );
-                        return `Approve ${isPartial ? formatTokenAmount(takerAmount, orderData.order.takerAsset) : ''} ${tokenSymbol}${isPartial ? ` (${fillPercentage.toFixed(1)}%)` : ''}`;
+                        return `Fill ${isPartial ? 'Partial ' : ''}Order${isPartial ? ` (${fillPercentage.toFixed(1)}%)` : ''}`;
                       })()}
               </button>
 
-              {stepErrors.approve && (
-                <p className="text-red-600 text-sm mt-2">
-                  {stepErrors.approve}
-                </p>
+              {stepErrors.fill && (
+                <p className="text-red-600 text-sm mt-2">{stepErrors.fill}</p>
               )}
 
               {!isValidFillAmount() && isPartialFill && (
@@ -1182,95 +1110,31 @@ function FillOrderPage() {
               )}
 
               {!hasSufficientBalance() && getTakerToken() && (
-                <p className="text-red-600 text-sm mt-2">
-                  Insufficient {getTakerToken().symbol} balance. You need{' '}
-                  {(() => {
-                    const { takerAmount } = calculateFillAmounts();
-                    return formatTokenAmount(
-                      takerAmount,
-                      orderData.order.takerAsset
-                    );
-                  })()}{' '}
-                  {getTakerToken().symbol} but only have{' '}
-                  {formatUnits(takerTokenBalance, getTakerToken().decimals)}{' '}
-                  {getTakerToken().symbol}
-                </p>
+                <div className="text-red-600 text-sm mt-2">
+                  <p>
+                    Insufficient {getTakerToken().symbol} balance. You need{' '}
+                    {(() => {
+                      const { takerAmount } = calculateFillAmounts();
+                      return formatTokenAmount(
+                        takerAmount,
+                        orderData.order.takerAsset
+                      );
+                    })()}{' '}
+                    {getTakerToken().symbol} but only have{' '}
+                    {formatUnits(takerTokenBalance, getTakerToken().decimals)}{' '}
+                    {getTakerToken().symbol}
+                  </p>
+                </div>
               )}
             </div>
           )}
 
-          {isApprovalComplete && approvalTxHash && (
+          {isFillComplete && (
             <div className="ml-11">
-              <p className="text-green-600 text-sm mb-2">
-                ✓ Approval completed
+              <p className="text-green-600 text-sm">
+                ✓ Order filled successfully
               </p>
-              {renderTransactionLink(approvalTxHash, 'Approval Transaction')}
-            </div>
-          )}
-        </div>
-
-        {/* Step 2: Fill Order */}
-        <div className="mb-6">
-          <div className="flex items-center mb-4">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold mr-3 ${
-                isFillComplete
-                  ? 'bg-green-100 text-green-800'
-                  : currentStep === 2
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'bg-gray-100 text-gray-500'
-              }`}
-            >
-              {isFillComplete ? '✓' : '2'}
-            </div>
-            <div>
-              <h4 className="font-medium text-gray-900">Fill Order</h4>
-              <p className="text-sm text-gray-600">
-                {(() => {
-                  const { takerAmount, makerAmount } = calculateFillAmounts();
-                  const isPartial = isPartialFill && fillPercentage < 100;
-                  return `Execute the ${isPartial ? 'partial ' : ''}limit order: pay ${formatTokenAmount(takerAmount, orderData.order.takerAsset)} ${getTokenSymbol(orderData.order.takerAsset)} to receive ${formatTokenAmount(makerAmount, orderData.order.makerAsset)} ${getTokenSymbol(orderData.order.makerAsset)}`;
-                })()}
-              </p>
-            </div>
-          </div>
-
-          {currentStep === 2 && !isFillComplete && (
-            <div className="ml-11">
-              <button
-                onClick={handleFillOrder}
-                disabled={
-                  isFilling || !isApprovalComplete || !isValidFillAmount()
-                }
-                className={`w-full sm:w-auto font-semibold py-3 px-6 rounded-lg transition-colors ${
-                  isFilling || !isApprovalComplete || !isValidFillAmount()
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-primary-green hover:bg-green-600 text-white'
-                }`}
-              >
-                {isFilling
-                  ? 'Filling Order...'
-                  : (() => {
-                      const isPartial = isPartialFill && fillPercentage < 100;
-                      return `Fill ${isPartial ? 'Partial ' : ''}Order${isPartial ? ` (${fillPercentage.toFixed(1)}%)` : ''}`;
-                    })()}
-              </button>
-
-              {stepErrors.fill && (
-                <p className="text-red-600 text-sm mt-2">{stepErrors.fill}</p>
-              )}
-
-              {!isApprovalComplete && (
-                <p className="text-gray-500 text-sm mt-2">
-                  Complete token approval first
-                </p>
-              )}
-
-              {!isValidFillAmount() && isPartialFill && (
-                <p className="text-red-600 text-sm mt-2">
-                  Please enter a valid fill amount
-                </p>
-              )}
+              {fillTxHash && renderTransactionLink(fillTxHash, 'fill')}
             </div>
           )}
         </div>

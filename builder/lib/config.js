@@ -4,7 +4,7 @@
 export default {
   extensions: {
     gasStation: {
-      address: '0x0000000000000000000000000000000000000000', // Mock address for tests
+      address: '0xC7f239DDb91739D416d210Ed6A11acc31237865e',
     },
     uniswapCalculator: {
       address: '0xCBE374BF9650B783b8e945DdC626273E74A4CB65',

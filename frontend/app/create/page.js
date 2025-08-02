@@ -36,10 +36,10 @@ function CreateOrderForm() {
   // State for order parameters
   const [orderParams, setOrderParams] = useState({
     maker: '',
-    makerAsset: '',
-    makerAmount: '',
-    takerAsset: '',
-    takerAmount: '',
+    makerAsset: '0x50c5725949a6f0c72e6c4a641f24049a917db0cb',
+    makerAmount: '0.05',
+    takerAsset: '0x4200000000000000000000000000000000000006',
+    takerAmount: '0.00001',
     receiver: '',
     expiry: '',
     nonce: '',
