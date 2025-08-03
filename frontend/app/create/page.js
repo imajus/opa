@@ -459,7 +459,7 @@ function CreateOrderForm() {
               {/* Core Trading Parameters */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <AssetAddressInput
-                  label="Maker Asset (Token Address)"
+                  label="Maker Asset"
                   value={orderParams.makerAsset}
                   onChange={(value) => handleParamChange('makerAsset', value)}
                   placeholder="Search tokens or enter address (0x...)"
@@ -488,7 +488,7 @@ function CreateOrderForm() {
                 </div>
 
                 <AssetAddressInput
-                  label="Taker Asset (Token Address)"
+                  label="Taker Asset"
                   value={orderParams.takerAsset}
                   onChange={(value) => handleParamChange('takerAsset', value)}
                   placeholder="Search tokens or enter address (0x...)"
@@ -526,7 +526,7 @@ function CreateOrderForm() {
                     onChange={(address) =>
                       handleParamChange('receiver', address)
                     }
-                    placeholder="Leave empty to use maker address, or enter address/domain (e.g., vitalik.eth)"
+                    placeholder="Leave empty to use maker address..."
                     hint="The address that will receive the tokens. Supports ENS domains."
                   />
                 </div>
