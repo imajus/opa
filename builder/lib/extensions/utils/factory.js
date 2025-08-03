@@ -69,12 +69,14 @@ export function createSchema({ hint, fields, validate }) {
     },
     async parse(params, context) {
       const parsed = {};
-      for (const [fieldName, fieldDef] of Object.entries(fields)) {
-        if (params[fieldName] !== undefined) {
-          parsed[fieldName] = await fieldDef.type.parse(
-            params[fieldName],
-            context
-          );
+      if (fields) {
+        for (const [fieldName, fieldDef] of Object.entries(fields)) {
+          if (params[fieldName] !== undefined) {
+            parsed[fieldName] = await fieldDef.type.parse(
+              params[fieldName],
+              context
+            );
+          }
         }
       }
       return parsed;

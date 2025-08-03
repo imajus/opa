@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Domains } from '../lib/1inch';
 
 export default function Address({
   address,
@@ -8,8 +9,34 @@ export default function Address({
   showCopy = true,
   className = '',
   size = 'sm',
+  showDomain = true,
 }) {
   const [copied, setCopied] = useState(false);
+  const [domain, setDomain] = useState(null);
+  const [loadingDomain, setLoadingDomain] = useState(false);
+
+  // Fetch domain name for the address
+  useEffect(() => {
+    if (!address || !showDomain) {
+      setDomain(null);
+      return;
+    }
+
+    const fetchDomain = async () => {
+      setLoadingDomain(true);
+      try {
+        const domainName = await Domains.getDomainForAddress(address);
+        setDomain(domainName);
+      } catch (error) {
+        console.warn('Failed to fetch domain for address:', error);
+        setDomain(null);
+      } finally {
+        setLoadingDomain(false);
+      }
+    };
+
+    fetchDomain();
+  }, [address, showDomain]);
 
   const handleCopy = async () => {
     try {
@@ -35,12 +62,35 @@ export default function Address({
 
   return (
     <div className={`inline-flex items-center gap-2 ${className}`}>
-      <span
-        className={`font-mono text-gray-500 ${sizeClasses[size]}`}
-        title={address}
-      >
-        {formatAddress(address)}
-      </span>
+      <div className="flex flex-col">
+        {/* Domain name if available */}
+        {showDomain && (domain || loadingDomain) && (
+          <div className="flex items-center gap-1">
+            {loadingDomain ? (
+              <span
+                className={`text-gray-400 ${sizeClasses[size]} animate-pulse`}
+              >
+                Loading...
+              </span>
+            ) : domain ? (
+              <span
+                className={`text-blue-600 font-medium ${sizeClasses[size]}`}
+                title={`Domain: ${domain}`}
+              >
+                {domain}
+              </span>
+            ) : null}
+          </div>
+        )}
+
+        {/* Address */}
+        <span
+          className={`font-mono text-gray-500 ${sizeClasses[size]}`}
+          title={address}
+        >
+          {formatAddress(address)}
+        </span>
+      </div>
 
       {showCopy && (
         <button

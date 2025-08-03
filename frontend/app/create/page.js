@@ -22,6 +22,7 @@ import {
   TokenAmountField,
 } from '../../components/SchemaFields';
 import { AssetAddressInput } from '../../components/AssetAddressInput';
+import AddressInput from '../../components/AddressInput';
 import Switch from '../../components/Switch';
 
 function CreateOrderForm() {
@@ -136,7 +137,6 @@ function CreateOrderForm() {
   };
 
   const handleExtensionParamChange = (hookType, param, value) => {
-    debugger;
     setExtensionParameters((prev) => ({
       ...prev,
       [hookType]: {
@@ -520,17 +520,14 @@ function CreateOrderForm() {
               {/* Additional Parameters */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Receiver Address
-                  </label>
-                  <input
-                    type="text"
+                  <AddressInput
+                    label="Receiver Address"
                     value={orderParams.receiver}
-                    onChange={(e) =>
-                      handleParamChange('receiver', e.target.value)
+                    onChange={(address) =>
+                      handleParamChange('receiver', address)
                     }
-                    placeholder="Leave empty to use maker address"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent text-gray-900 placeholder-gray-500"
+                    placeholder="Leave empty to use maker address, or enter address/domain (e.g., vitalik.eth)"
+                    hint="The address that will receive the tokens. Supports ENS domains."
                   />
                 </div>
 

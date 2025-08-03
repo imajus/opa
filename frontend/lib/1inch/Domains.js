@@ -86,8 +86,8 @@ export async function getDomainForAddress(address) {
     throw new Error('address parameter is required');
   }
   try {
-    const result = await reverseLookup(address);
-    return result.result?.domain || null;
+    const { result } = await reverseLookup(address);
+    return result?.[0]?.domain || null;
   } catch (error) {
     console.warn(`Failed to get domain for address ${address}:`, error);
     return null;
@@ -104,8 +104,8 @@ export async function getAddressForDomain(domainName) {
     throw new Error('domainName parameter is required');
   }
   try {
-    const result = await lookupDomain(domainName);
-    return result.result?.address || null;
+    const { result } = await lookupDomain(domainName);
+    return result?.[0]?.address || null;
   } catch (error) {
     console.warn(`Failed to get address for domain ${domainName}:`, error);
     return null;

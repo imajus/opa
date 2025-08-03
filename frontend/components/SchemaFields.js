@@ -1,41 +1,24 @@
 import { useState, useEffect } from 'react';
 import { Type } from 'opa-builder';
+import AddressInput from './AddressInput';
 
 const baseInputClassName =
   'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent text-gray-900 placeholder-gray-500';
 
 /**
- * Address field component for Ethereum addresses
+ * Address field component for Ethereum addresses with ENS support
  */
 export const AddressField = ({ value, onChange, placeholder, required }) => {
-  const [error, setError] = useState('');
-
-  const validateAddress = (addr) => {
-    if (!addr) return '';
-    if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
-      return 'Must be a valid Ethereum address (0x + 40 hex characters)';
-    }
-    return '';
-  };
-
-  const handleChange = (e) => {
-    const newValue = e.target.value;
-    onChange(newValue);
-    setError(validateAddress(newValue));
-  };
-
   return (
-    <div>
-      <input
-        type="text"
-        value={value}
-        onChange={handleChange}
-        placeholder={placeholder || '0x...'}
-        className={`${baseInputClassName} ${error ? 'border-red-500' : ''}`}
-        required={required}
-      />
-      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-    </div>
+    <AddressInput
+      value={value}
+      onChange={onChange}
+      placeholder={
+        placeholder || 'Enter Ethereum address or domain (e.g., vitalik.eth)'
+      }
+      required={required}
+      hint="Supports ENS domains and other address resolution services"
+    />
   );
 };
 
