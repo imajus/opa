@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   getAvailableExtensions,
@@ -9,16 +9,37 @@ import {
   flatExtensionConfigParams,
   getSchemaTypeName,
 } from '../../lib/utils/extensions';
-import { encodeStrategy } from '../../lib/utils/encoding';
+import { encodeStrategy, decodeStrategy } from '../../lib/utils/encoding';
 
 export default function StrategyPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [selectedExtensions, setSelectedExtensions] = useState([]);
   // const [extensionParameters, setExtensionParameters] = useState({});
   const allExtensions = useMemo(() => getAvailableExtensions(), []);
   const [availableExtensions, setAvailableExtensions] = useState(
     () => allExtensions
   );
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [isSharedStrategy, setIsSharedStrategy] = useState(false);
+
+  // Initialize from URL parameters for shared strategies
+  useEffect(() => {
+    const blueprintParam = searchParams.get('blueprint');
+    if (blueprintParam) {
+      try {
+        const { extensions } = decodeStrategy(blueprintParam);
+        if (extensions?.length > 0) {
+          setSelectedExtensions(extensions);
+          setIsSharedStrategy(true);
+        }
+      } catch (error) {
+        console.error('Failed to decode shared strategy:', error);
+      }
+    }
+  }, [searchParams]);
 
   // Helper function to get conflicting extensions for a given extension
   const getConflictingExtensions = useCallback(
@@ -77,7 +98,29 @@ export default function StrategyPage() {
     });
   };
 
-  const handleContinue = () => {
+  const handleShare = () => {
+    const strategy = {
+      extensions: selectedExtensions,
+      // parameters: extensionParameters,
+    };
+
+    const encodedStrategy = encodeStrategy(strategy);
+    const shareUrl = `${window.location.origin}/strategy?blueprint=${encodedStrategy}`;
+    setShareUrl(shareUrl);
+    setIsSharing(true);
+  };
+
+  const handleCopyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+    }
+  };
+
+  const handleCreateOrder = () => {
     const strategy = {
       extensions: selectedExtensions,
       // parameters: extensionParameters,
@@ -111,12 +154,12 @@ export default function StrategyPage() {
           </nav>
 
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Build Your Strategy
+            {isSharedStrategy ? 'Shared Strategy' : 'Build Your Strategy'}
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl">
-            Select and configure extensions to create sophisticated limit order
-            strategies. Extensions can add features like alternative gas
-            payment, dynamic pricing, and flexible amounts.
+            {isSharedStrategy
+              ? 'This strategy has been shared with you. Review the selected extensions and create an order using this configuration.'
+              : 'Select and configure extensions to create sophisticated limit order strategies. Extensions can add features like alternative gas payment, dynamic pricing, and flexible amounts.'}
           </p>
         </div>
 
@@ -128,12 +171,16 @@ export default function StrategyPage() {
             return (
               <div
                 key={extension.id}
-                className={`border-2 rounded-xl p-6 transition-all duration-200 cursor-pointer ${
+                className={`border-2 rounded-xl p-6 transition-all duration-200 ${
+                  isSharedStrategy ? 'cursor-default' : 'cursor-pointer'
+                } ${
                   isSelected
                     ? 'border-primary-orange bg-orange-50'
                     : 'border-gray-200 bg-white hover:border-gray-300'
                 }`}
-                onClick={() => handleExtensionToggle(extension.id)}
+                onClick={() =>
+                  !isSharedStrategy && handleExtensionToggle(extension.id)
+                }
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
@@ -241,6 +288,39 @@ export default function StrategyPage() {
           </div>
         )}
 
+        {/* Share Strategy Interface */}
+        {isSharing && (
+          <div className="mb-8 p-6 bg-blue-50 border border-blue-200 rounded-xl">
+            <h3 className="text-lg font-semibold text-blue-900 mb-4">
+              Share Your Strategy
+            </h3>
+            <p className="text-blue-700 mb-4">
+              Share this strategy link with potential makers who can create
+              orders using your selected extensions.
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 bg-white border border-blue-300 rounded-lg p-3">
+                <input
+                  type="text"
+                  value={shareUrl}
+                  readOnly
+                  className="w-full text-sm text-gray-700 bg-transparent border-none outline-none"
+                />
+              </div>
+              <button
+                onClick={handleCopyToClipboard}
+                className={`px-4 py-3 rounded-lg font-medium transition-colors ${
+                  copied
+                    ? 'bg-green-600 text-white'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
+              >
+                {copied ? 'Copied!' : 'Copy Link'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="flex justify-between items-center">
           <Link
@@ -260,17 +340,31 @@ export default function StrategyPage() {
               </Link>
             )}
 
-            <button
-              onClick={handleContinue}
-              disabled={selectedExtensions.length === 0}
-              className={`font-semibold py-3 px-6 rounded-lg transition-colors ${
-                selectedExtensions.length > 0
-                  ? 'bg-primary-orange hover:bg-orange-600 text-white'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              Continue to Order Creation →
-            </button>
+            {selectedExtensions.length > 0 && !isSharedStrategy && (
+              <>
+                <button
+                  onClick={handleShare}
+                  className="border border-primary-orange text-primary-orange hover:bg-orange-50 font-semibold py-3 px-6 rounded-lg transition-colors"
+                >
+                  Share Strategy
+                </button>
+                <button
+                  onClick={handleCreateOrder}
+                  className="bg-primary-orange hover:bg-orange-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                >
+                  Create Order →
+                </button>
+              </>
+            )}
+
+            {isSharedStrategy && (
+              <button
+                onClick={handleCreateOrder}
+                className="bg-primary-orange hover:bg-orange-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+              >
+                Create Order with This Strategy →
+              </button>
+            )}
           </div>
         </div>
       </div>

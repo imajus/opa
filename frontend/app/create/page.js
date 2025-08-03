@@ -52,12 +52,22 @@ function CreateOrderForm() {
   });
 
   // State for extension parameters
-  const [extensionParameters, setExtensionParameters] = useState({});
+  const [extensionParameters, setExtensionParameters] = useState({
+    [HookType.MAKER_AMOUNT]: {},
+    [HookType.TAKER_AMOUNT]: {},
+    [HookType.PRE_INTERACTION]: {},
+    [HookType.POST_INTERACTION]: {},
+  });
 
   // State for validation and UI
   const [validationErrors, setValidationErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+
+  // State for sharing functionality
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [copied, setCopied] = useState(false);
 
   // Initialize from URL parameters
   useEffect(() => {
@@ -126,6 +136,7 @@ function CreateOrderForm() {
   };
 
   const handleExtensionParamChange = (hookType, param, value) => {
+    debugger;
     setExtensionParameters((prev) => ({
       ...prev,
       [hookType]: {
@@ -162,7 +173,7 @@ function CreateOrderForm() {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
+  const handleCreateOrder = async (e) => {
     e.preventDefault();
     if (!validateForm()) {
       return;
@@ -239,6 +250,98 @@ function CreateOrderForm() {
       );
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleShare = async (e) => {
+    e.preventDefault();
+    if (!validateForm()) {
+      return;
+    }
+    if (!signer) {
+      setSubmitError('Please connect your wallet first');
+      return;
+    }
+    setIsSubmitting(true);
+    setSubmitError('');
+    try {
+      // Convert expiry to timestamp
+      const expiryTimestamp = BigInt(
+        Math.floor(new Date(orderParams.expiry).getTime() / 1000)
+      );
+      // Create OrderBuilder instance with the order parameters
+      const builder = new OrderBuilder(
+        orderParams.makerAsset,
+        orderParams.makerAmount,
+        orderParams.takerAsset,
+        orderParams.takerAmount,
+        orderParams.receiver || undefined, // Use undefined if no custom receiver
+        orderParams.makerPermit
+      );
+      // Configure maker traits
+      const traits = builder.getMakerTraits();
+      if (expiryTimestamp) {
+        traits.withExpiration(expiryTimestamp);
+      }
+      if (orderParams.nonce && orderParams.nonce !== '0') {
+        traits.withNonce(BigInt(orderParams.nonce));
+      }
+      if (orderParams.allowPartialFills) {
+        traits.allowPartialFills();
+      } else {
+        traits.disablePartialFills();
+      }
+      if (orderParams.allowMultipleFills) {
+        traits.allowMultipleFills();
+      } else {
+        traits.disableMultipleFills();
+      }
+      // Add selected extensions
+      try {
+        selectedExtensions.forEach((extensionId) => {
+          if (extensions[extensionId]) {
+            builder.addExtension(extensions[extensionId]);
+          }
+        });
+      } catch (error) {
+        if (error instanceof HookCollisionError) {
+          throw new Error(`Extension conflict: ${error.message}`);
+        }
+        throw error;
+      }
+      // Build the order using the OrderBuilder API
+      const result = await builder.build(signer, extensionParameters);
+      // Create order data in the format expected by the frontend
+      const orderData = {
+        order: result.order,
+        signature: result.signature,
+        // orderHash: result.orderHash,
+        extension: result.extension,
+      };
+      // Encode order data for URL
+      const encodedOrder = encodeOrder(orderData);
+      // Create share URL
+      const shareUrl = `${window.location.origin}/fill?order=${encodedOrder}`;
+      setShareUrl(shareUrl);
+      setIsSharing(true);
+    } catch (error) {
+      console.error('Failed to build order:', error);
+      setSubmitError(
+        error.message ||
+          'Failed to create order. Please check your parameters and try again.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCopyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
     }
   };
 
@@ -514,6 +617,50 @@ function CreateOrderForm() {
             </div>
           ))}
 
+        {/* Share Order Interface */}
+        {isSharing && (
+          <div className="mb-8 p-6 bg-green-50 border border-green-200 rounded-xl">
+            <h3 className="text-lg font-semibold text-green-900 mb-4">
+              Share Your Order
+            </h3>
+            <p className="text-green-700 mb-4">
+              Your order has been created and signed! Share this link with
+              potential takers who can fill your order.
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 bg-white border border-green-300 rounded-lg p-3">
+                <input
+                  type="text"
+                  value={shareUrl}
+                  readOnly
+                  className="w-full text-sm text-gray-700 bg-transparent border-none outline-none"
+                />
+              </div>
+              <button
+                onClick={handleCopyToClipboard}
+                className={`px-4 py-3 rounded-lg font-medium transition-colors ${
+                  copied
+                    ? 'bg-green-600 text-white'
+                    : 'bg-green-600 hover:bg-green-700 text-white'
+                }`}
+              >
+                {copied ? 'Copied!' : 'Copy Link'}
+              </button>
+            </div>
+            <div className="mt-4 pt-4 border-t border-green-200">
+              <p className="text-sm text-green-600">
+                You can also fill this order yourself by{' '}
+                <button
+                  onClick={() => window.open(shareUrl, '_blank')}
+                  className="text-green-700 underline hover:text-green-800"
+                >
+                  opening the fill page
+                </button>
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="flex justify-between items-center">
           <Link
@@ -523,17 +670,39 @@ function CreateOrderForm() {
             ← Back to {isSimpleOrder ? 'Home' : 'Strategy Builder'}
           </Link>
 
-          <button
-            onClick={handleSubmit}
-            disabled={!isConnected || isSubmitting}
-            className={`font-semibold py-3 px-8 rounded-lg transition-colors ${
-              isConnected && !isSubmitting
-                ? 'bg-primary-orange hover:bg-orange-600 text-white'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            {isSubmitting ? 'Creating Order...' : 'Review & Sign Order →'}
-          </button>
+          {!isSharing ? (
+            <div className="flex gap-4">
+              <button
+                onClick={handleShare}
+                disabled={!isConnected || isSubmitting}
+                className={`font-semibold py-3 px-6 rounded-lg transition-colors ${
+                  isConnected && !isSubmitting
+                    ? 'border border-primary-orange text-primary-orange hover:bg-orange-50'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                {isSubmitting ? 'Creating Order...' : 'Share Order'}
+              </button>
+              <button
+                onClick={handleCreateOrder}
+                disabled={!isConnected || isSubmitting}
+                className={`font-semibold py-3 px-6 rounded-lg transition-colors ${
+                  isConnected && !isSubmitting
+                    ? 'bg-primary-orange hover:bg-orange-600 text-white'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                {isSubmitting ? 'Creating Order...' : 'Create & Fill Order →'}
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => window.open(shareUrl, '_blank')}
+              className="bg-primary-orange hover:bg-orange-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+            >
+              Fill Order →
+            </button>
+          )}
         </div>
       </div>
     </div>

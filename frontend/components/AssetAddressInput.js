@@ -128,6 +128,7 @@ export const AssetAddressInput = ({
             onChange={(event) => handleInputChange(event.target.value)}
             placeholder={placeholder}
             required={required}
+            autoComplete="off"
           />
 
           <Transition
