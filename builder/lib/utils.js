@@ -7,15 +7,15 @@ import {
 } from '@1inch/limit-order-sdk';
 import { Signature, Contract, getAddress } from 'ethers';
 import { ErrorDecoder } from 'ethers-decode-error';
-import errorsABI from './errors.abi.json' with { type: 'json' };
 import amountGetterABI from '../abis/IAmountGetter.json' with { type: 'json' };
-import createERC20Contract from './contracts/erc20.js';
-import Config from './config';
-import gasStationWrapper from './extensions/GasStation';
-import uniswapCalculatorWrapper from './extensions/UniswapCalculator';
-import dutchAuctionCalculatorWrapper from './extensions/DutchAuctionCalculator';
-import rangeAmountCalculatorWrapper from './extensions/RangeAmountCalculator';
-import vestingControlWrapper from './extensions/VestingControl';
+import errorsABI from '../abis/errors.abi.json' with { type: 'json' };
+import createERC20Contract from './contracts/ERC20.js';
+import Config from './config.js';
+import gasStationWrapper from './extensions/GasStation.js';
+import uniswapCalculatorWrapper from './extensions/UniswapCalculator.js';
+import dutchAuctionCalculatorWrapper from './extensions/DutchAuctionCalculator.js';
+import rangeAmountCalculatorWrapper from './extensions/RangeAmountCalculator.js';
+import vestingControlWrapper from './extensions/VestingControl.js';
 
 /**
  * Parse maker traits from a limit order to extract order flags and settings

@@ -7,7 +7,7 @@ import {
 import { parseUnits } from 'ethers';
 import { HookType } from './constants.js';
 import { approveAssetSpending, makeAssetPermit } from './utils.js';
-import createERC20Contract from './contracts/erc20.js';
+import createERC20Contract from './contracts/ERC20.js';
 
 /**
  * Custom error thrown when extension wrappers have overlapping hook types.
