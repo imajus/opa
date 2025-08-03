@@ -412,7 +412,7 @@ function CreateOrderForm() {
           return (
             <div
               key={extensionId}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+              className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6"
             >
               <h3 className="text-lg font-semibold text-gray-900 mb-6">
                 {config.name}
@@ -517,7 +517,7 @@ function CreateOrderForm() {
                   label="Maker Asset"
                   value={orderParams.makerAsset}
                   onChange={(value) => handleParamChange('makerAsset', value)}
-                  placeholder="Search tokens or enter address (0x...)"
+                  placeholder="Search tokens or enter address"
                   required={true}
                   error={validationErrors.makerAsset}
                   hint="Search for a token or enter its contract address"
@@ -546,7 +546,7 @@ function CreateOrderForm() {
                   label="Taker Asset"
                   value={orderParams.takerAsset}
                   onChange={(value) => handleParamChange('takerAsset', value)}
-                  placeholder="Search tokens or enter address (0x...)"
+                  placeholder="Search tokens or enter address"
                   required={true}
                   error={validationErrors.takerAsset}
                   hint="Search for a token or enter its contract address"
