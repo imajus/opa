@@ -15,5 +15,8 @@ export default {
     rangeAmountCalculator: {
       address: '0x98e58a8fCb283F69Ad5eA97E618A589A284c0210',
     },
+    vestingControl: {
+      address: '0x2406373f14c2D3525aF16F0Ad9a4C7a5249c6D66',
+    },
   },
 };

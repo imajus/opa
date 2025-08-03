@@ -15,6 +15,7 @@ npm install @1inch/limit-order-sdk
 ```js
 import {
   gasStation,
+  vestingControl,
   dutchAuctionCalculator,
   rangeAmountCalculator,
   extensions,
@@ -33,7 +34,21 @@ const extension = gasStation.build();
 // Use `extension` with the 1inch Limit Order SDK
 ```
 
+### Example: Vesting Control Extension
 
+```js
+import { vestingControl } from '../src/index.js';
+
+const params = {
+  PRE_INTERACTION: {
+    vestingPeriod: 2592000, // 30 days in seconds
+    totalPeriods: 12, // 12 monthly unlocks
+    startTime: 1700000000, // Unix timestamp when vesting begins (after cliff)
+  },
+};
+const extension = vestingControl.build(params);
+// Use `extension` with the 1inch Limit Order SDK for vested token distribution
+```
 
 ### Example: Dutch Auction Calculator
 

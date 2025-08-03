@@ -1,9 +1,8 @@
 // Extension wrappers
 import gasStation from './extensions/GasStation.js';
-
+import vestingControl from './extensions/VestingControl.js';
 import dutchAuctionCalculator from './extensions/DutchAuctionCalculator.js';
 import rangeAmountCalculator from './extensions/RangeAmountCalculator.js';
-
 import uniswapCalculator from './extensions/UniswapCalculator.js';
 
 export { getLimitOrderContract } from '@1inch/limit-order-sdk';
@@ -17,9 +16,8 @@ export { HookType, ALL_HOOK_TYPES } from './constants.js';
  */
 export const extensions = {
   gasStation,
-
+  vestingControl,
   dutchAuctionCalculator,
   rangeAmountCalculator,
-
   uniswapCalculator,
 };

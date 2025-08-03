@@ -2,7 +2,7 @@ import { ExtensionBuilder, Interaction, Address } from '@1inch/limit-order-sdk';
 import { createWrapper, createSchema } from './utils/factory.js';
 import { HookType } from '../constants.js';
 import Config from '../config.js';
-import createERC20Contract from '@/contracts/erc20.js';
+import createERC20Contract from '../contracts/erc20.js';
 
 /**
  * Gas Station extension wrapper

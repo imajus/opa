@@ -15,6 +15,7 @@ import gasStationWrapper from './extensions/GasStation';
 import uniswapCalculatorWrapper from './extensions/UniswapCalculator';
 import dutchAuctionCalculatorWrapper from './extensions/DutchAuctionCalculator';
 import rangeAmountCalculatorWrapper from './extensions/RangeAmountCalculator';
+import vestingControlWrapper from './extensions/VestingControl';
 
 /**
  * Parse maker traits from a limit order to extract order flags and settings
@@ -234,6 +235,8 @@ export function lookupExtensionByAddress(address) {
       return dutchAuctionCalculatorWrapper;
     case 'rangeAmountCalculator':
       return rangeAmountCalculatorWrapper;
+    case 'vestingControl':
+      return vestingControlWrapper;
     default:
       throw new Error(`Unknown extension ${key}`);
   }

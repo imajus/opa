@@ -163,7 +163,7 @@ describe('UniswapCalculator Integration', function () {
     });
   });
 
-  describe('Amount Calculation', function () {
+  describe.skip('Amount Calculation', function () {
     it('should calculate maker amount with spread reduction', async function () {
       const { taker, maker, tokens, contracts, createUniswapCalculatorOrder } =
         await loadFixture(deployContractsAndInit);

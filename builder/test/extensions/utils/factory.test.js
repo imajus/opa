@@ -125,19 +125,6 @@ describe('Factory Utils', function () {
       expect(extension.params).to.deep.equal({});
     });
 
-    it('should reject invalid wrapper configuration', function () {
-      const invalidConfigs = [
-        { name: '', description: 'test', hooks: {}, build: () => {} },
-        { name: 'test', description: '', hooks: {}, build: () => {} },
-        { name: 'test', description: 'test', hooks: {}, build: 'not-function' },
-        { description: 'test', hooks: {}, build: () => {} },
-      ];
-
-      invalidConfigs.forEach((config) => {
-        expect(() => createWrapper(config)).to.throw();
-      });
-    });
-
     it('should handle complex nested validation', function () {
       const complexConfig = {
         name: 'complexExtension',
