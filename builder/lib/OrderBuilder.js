@@ -4,7 +4,7 @@ import {
   Address,
   Extension,
 } from '@1inch/limit-order-sdk';
-import { parseUnits } from 'ethers';
+import { parseUnits, ZeroAddress } from 'ethers';
 import { HookType } from './constants.js';
 import { approveAssetSpending, makeAssetPermit } from './utils.js';
 import createERC20Contract from './contracts/ERC20.js';
@@ -50,6 +50,7 @@ export class OrderBuilder {
   extensions = [];
   usedHooks = new Set();
   makerTraits = MakerTraits.default();
+  makerPermit = false;
 
   /**
    * Create a new OrderBuilder instance with the specified trading parameters.
@@ -63,12 +64,20 @@ export class OrderBuilder {
    * @param {string} takerAmount - Amount of taker asset being requested
    * @param {string} [receiver] - Optional address to receive the filled order (defaults to maker)
    */
-  constructor(makerAsset, makerAmount, takerAsset, takerAmount, receiver) {
+  constructor(
+    makerAsset,
+    makerAmount,
+    takerAsset,
+    takerAmount,
+    receiver = ZeroAddress,
+    makerPermit = false
+  ) {
     this.makerAsset = makerAsset;
     this.makerAmount = makerAmount;
     this.takerAsset = takerAsset;
     this.takerAmount = takerAmount;
     this.receiver = receiver;
+    this.makerPermit = makerPermit;
   }
 
   /**
@@ -157,8 +166,6 @@ export class OrderBuilder {
       this.takerAmount,
       await takerAssetContract.decimals()
     );
-    // Create receiver address (defaults to maker if not specified)
-    const receiver = this.receiver ? new Address(this.receiver) : makerAddress;
     // Create the order info object
     const orderInfo = {
       maker: makerAddress,
@@ -166,7 +173,7 @@ export class OrderBuilder {
       takerAsset: new Address(this.takerAsset),
       makingAmount,
       takingAmount,
-      receiver,
+      receiver: new Address(this.receiver),
     };
     // Combine all extensions into a single Extension instance
     const extension = await this._combineExtensions(params, {
@@ -175,15 +182,16 @@ export class OrderBuilder {
       takerAsset: takerAssetContract,
       takerAmount: takingAmount,
     });
-    // Create a permit for the maker asset
-    try {
+    // Handle maker asset approval based on permit preference
+    if (this.makerPermit) {
+      // Create a permit for the maker asset
       extension.makerPermit = await makeAssetPermit(
         signer,
         makerAssetContract,
         makingAmount
       );
-    } catch (error) {
-      console.error('Failed to make asset permit, approving instead');
+    } else {
+      // Use traditional approval
       await approveAssetSpending(signer, makerAssetContract, makingAmount);
     }
     // Construct LimitOrder with current params and combined extensions

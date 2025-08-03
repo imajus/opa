@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: 'Web3 App - Next.js + RainbowKit + Wagmi',
+  title: 'OPA',
   description:
-    'A modern Web3 application built with Next.js, RainbowKit, Wagmi, and TailwindCSS',
+    'No-code visual strategy builder for strategies automation on top of 1inch Limit Order Protocol',
 };
 
 export default function RootLayout({ children }) {

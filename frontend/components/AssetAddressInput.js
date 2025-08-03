@@ -35,6 +35,7 @@ export const AssetAddressInput = ({
         return;
       }
       setIsLoading(true);
+      setTokens([]);
       setSearchError(null);
       try {
         let results;

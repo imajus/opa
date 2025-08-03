@@ -49,14 +49,14 @@ export const spread = {
     if (Number(value) < 0) {
       throw new Error('Spread must be positive');
     }
-    if (Number(value) > 1000) {
+    if (Number(value) > 100) {
       throw new Error(
-        'Spread must be less than or equal to 1000% (validation range: 10% to 1000%)'
+        'Spread must be less than or equal to 100% (validation range: 10% to 100%)'
       );
     }
     if (Number(value) < 0.1) {
       throw new Error(
-        'Spread must be at least 0.1% (validation range: 10% to 1000%)'
+        'Spread must be at least 0.1% (validation range: 10% to 100%)'
       );
     }
   },
@@ -83,7 +83,7 @@ const uniswapCalculatorWrapper = createWrapper({
         spread: {
           label: 'Spread',
           type: spread,
-          hint: 'Spread in %, e.g. 5 (range: 0.1% to 1000%)',
+          hint: 'Spread in %, e.g. 5 (range: 0.1 to 100)',
         },
       },
     }),

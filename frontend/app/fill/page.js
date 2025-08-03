@@ -10,33 +10,16 @@ import { getExtensionConfig } from '../../lib/utils/extensions';
 import {
   calculateMakingAmount,
   fillOrder,
-  getLimitOrderContract,
   parseMakerTraits,
+  createERC20Contract,
+  unpackExtensions,
 } from 'opa-builder';
-import {
-  Contract,
-  parseUnits,
-  formatUnits,
-  formatEther,
-  ZeroAddress,
-} from 'ethers';
+import { parseUnits, formatUnits, formatEther, ZeroAddress } from 'ethers';
 import { Token, Balance } from '../../lib/1inch';
 import TokenSymbol, {
   getTokenDataForSymbol,
 } from '../../components/TokenSymbol';
-
-// ERC20 ABI for token interactions
-const ERC20_ABI = [
-  'function approve(address spender, uint256 amount) returns (bool)',
-  'function allowance(address owner, address spender) view returns (uint256)',
-  'function name() view returns (string)',
-  'function symbol() view returns (string)',
-  'function balanceOf(address) view returns (uint256)',
-  'function decimals() view returns (uint8)',
-  'function nonces(address) view returns (uint256)',
-  'function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) external',
-  'function version() view returns (string)',
-];
+import Address from '../../components/Address';
 
 function FillOrderPage() {
   const searchParams = useSearchParams();
@@ -187,7 +170,7 @@ function FillOrderPage() {
   const fetchTokenDataViaRPC = async (tokenAddress) => {
     if (!signer || !tokenAddress) return null;
     try {
-      const tokenContract = new Contract(tokenAddress, ERC20_ABI, signer);
+      const tokenContract = createERC20Contract(tokenAddress, signer);
       const [symbol, decimals, name] = await Promise.all([
         tokenContract.symbol(),
         tokenContract.decimals(),
@@ -208,7 +191,7 @@ function FillOrderPage() {
   const fetchTokenBalanceViaRPC = async (tokenAddress, userAddress) => {
     if (!signer || !tokenAddress || !userAddress) return '0';
     try {
-      const tokenContract = new Contract(tokenAddress, ERC20_ABI, signer);
+      const tokenContract = createERC20Contract(tokenAddress, signer);
       const balance = await tokenContract.balanceOf(userAddress);
       return balance.toString();
     } catch (error) {
@@ -228,7 +211,7 @@ function FillOrderPage() {
     return tokensData[orderData.order.takerAsset.toLowerCase()];
   };
 
-  // Format token amounts according to their decimals, capped to 10 symbols max
+  // Format token amounts according to their decimals, with proper precision handling
   const formatTokenAmount = (amount, tokenAddress) => {
     if (!tokensData || !amount) return amount;
     const token = tokensData[tokenAddress?.toLowerCase()];
@@ -244,7 +227,15 @@ function FillOrderPage() {
       } else {
         formatted = formatUnits(amount, token.decimals);
       }
-      // Cap to 10 symbols maximum
+
+      // Remove unnecessary trailing zeros and limit to reasonable precision
+      const num = parseFloat(formatted);
+      const maxDisplayDecimals = Math.min(token.decimals, 8);
+
+      // Format with appropriate decimal places, removing trailing zeros
+      formatted = num.toFixed(maxDisplayDecimals).replace(/\.?0+$/, '');
+
+      // Cap to 10 symbols maximum for display
       if (formatted.length > 10) {
         return formatted.substring(0, 10);
       }
@@ -346,16 +337,38 @@ function FillOrderPage() {
     let actualMakerAmount;
 
     if (isPartialFill && customFillAmount && parseFloat(customFillAmount) > 0) {
-      // Use custom amount
-      actualTakerAmount = customFillAmount;
-      // Calculate proportional maker amount
+      // Use custom amount - round to appropriate decimal places
+      const takerToken = getTakerToken();
+      const makerToken = getMakerToken();
+      const takerDecimals = takerToken?.decimals || 18;
+      const makerDecimals = makerToken?.decimals || 18;
+
+      actualTakerAmount = parseFloat(customFillAmount).toFixed(
+        Math.min(takerDecimals, 8)
+      );
+      // Calculate proportional maker amount with precision handling
       const ratio = parseFloat(customFillAmount) / parseFloat(fullTakerAmount);
-      actualMakerAmount = (parseFloat(fullMakerAmount) * ratio).toString();
+      const calculatedMakerAmount = parseFloat(fullMakerAmount) * ratio;
+      actualMakerAmount = calculatedMakerAmount.toFixed(
+        Math.min(makerDecimals, 8)
+      );
     } else if (isPartialFill && fillPercentage < 100) {
-      // Use percentage
+      // Use percentage with precision handling
+      const takerToken = getTakerToken();
+      const makerToken = getMakerToken();
+      const takerDecimals = takerToken?.decimals || 18;
+      const makerDecimals = makerToken?.decimals || 18;
+
       const ratio = fillPercentage / 100;
-      actualTakerAmount = (parseFloat(fullTakerAmount) * ratio).toString();
-      actualMakerAmount = (parseFloat(fullMakerAmount) * ratio).toString();
+      const calculatedTakerAmount = parseFloat(fullTakerAmount) * ratio;
+      const calculatedMakerAmount = parseFloat(fullMakerAmount) * ratio;
+
+      actualTakerAmount = calculatedTakerAmount.toFixed(
+        Math.min(takerDecimals, 8)
+      );
+      actualMakerAmount = calculatedMakerAmount.toFixed(
+        Math.min(makerDecimals, 8)
+      );
     } else {
       // Full fill
       actualTakerAmount = fullTakerAmount;
@@ -392,31 +405,41 @@ function FillOrderPage() {
   };
 
   const handleCustomAmountChange = (value) => {
-    setCustomFillAmount(value);
     if (orderData && tokensData && value && parseFloat(value) > 0) {
-      // Calculate percentage based on custom amount
+      // Calculate percentage based on custom amount with precision handling
+      const takerToken = getTakerToken();
+      const takerDecimals = takerToken?.decimals || 18;
+
       const maxAmount = parseFloat(getTakerAmount());
       const currentAmount = parseFloat(value);
       // Clamp the amount to not exceed the maximum
       const clampedAmount = Math.min(currentAmount, maxAmount);
       const percentage = (clampedAmount / maxAmount) * 100;
+
+      // Round the clamped amount to appropriate precision
+      const roundedAmount = clampedAmount.toFixed(Math.min(takerDecimals, 8));
+
+      setCustomFillAmount(roundedAmount);
       setFillPercentage(Math.min(percentage, 100));
-      // Update the input if it was clamped
-      if (clampedAmount !== currentAmount) {
-        setCustomFillAmount(clampedAmount.toString());
-      }
+    } else {
+      setCustomFillAmount(value);
     }
   };
 
   const handlePercentageChange = (percentage) => {
     setFillPercentage(percentage);
     if (orderData && tokensData) {
-      // Calculate custom amount based on percentage
-      const amount = (
-        (parseFloat(getTakerAmount()) * percentage) /
-        100
-      ).toString();
-      setCustomFillAmount(amount);
+      // Calculate custom amount based on percentage with precision handling
+      const takerToken = getTakerToken();
+      const takerDecimals = takerToken?.decimals || 18;
+
+      const fullAmount = parseFloat(getTakerAmount());
+      const calculatedAmount = (fullAmount * percentage) / 100;
+      const roundedAmount = calculatedAmount.toFixed(
+        Math.min(takerDecimals, 8)
+      );
+
+      setCustomFillAmount(roundedAmount);
     }
   };
 
@@ -505,7 +528,7 @@ function FillOrderPage() {
             {/* Maker Side Loading */}
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="text-sm font-medium text-gray-600 mb-3">
-                MAKER WANTS
+                MAKER GIVES
               </h4>
               <div className="space-y-2">
                 <div className="flex items-center">
@@ -551,7 +574,7 @@ function FillOrderPage() {
           {/* Maker Side */}
           <div className="border border-gray-200 rounded-lg p-4">
             <h4 className="text-sm font-medium text-gray-600 mb-3">
-              MAKER WANTS
+              MAKER GIVES
             </h4>
             <div className="space-y-2">
               <div>
@@ -572,9 +595,12 @@ function FillOrderPage() {
                   className="ml-2"
                 />
               </div>
-              <div className="text-xs text-gray-500 font-mono">
-                {orderData.order.makerAsset}
-              </div>
+              <Address
+                address={orderData.order.makerAsset}
+                size="xs"
+                truncate={true}
+                showCopy={true}
+              />
             </div>
           </div>
 
@@ -602,9 +628,12 @@ function FillOrderPage() {
                   className="ml-2"
                 />
               </div>
-              <div className="text-xs text-gray-500 font-mono">
-                {orderData.order.takerAsset}
-              </div>
+              <Address
+                address={orderData.order.takerAsset}
+                size="xs"
+                truncate={true}
+                showCopy={true}
+              />
             </div>
           </div>
         </div>
@@ -614,25 +643,31 @@ function FillOrderPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div>
               <span className="text-gray-600">Maker:</span>
-              <p className="font-mono text-gray-900">
-                {orderData.order.maker.slice(0, 6)}...
-                {orderData.order.maker.slice(-4)}
-              </p>
+              <div>
+                <Address
+                  address={orderData.order.maker}
+                  size="xs"
+                  truncate={true}
+                />
+              </div>
             </div>
             <div>
               <span className="text-gray-600">Receiver:</span>
-              <p className="font-mono text-gray-900">
-                {getReceiverAddress().slice(0, 6)}...
-                {getReceiverAddress().slice(-4)}
-              </p>
+              <div>
+                <Address
+                  address={getReceiverAddress()}
+                  size="xs"
+                  truncate={true}
+                />
+              </div>
             </div>
             <div>
               <span className="text-gray-600">Expires:</span>
-              <p className="text-gray-900">
+              <div className="text-gray-500 py-1">
                 {makerTraits
                   ? formatExpiry(makerTraits.expiration)
                   : 'No expiration'}
-              </p>
+              </div>
             </div>
           </div>
         </div>
@@ -746,21 +781,10 @@ function FillOrderPage() {
             <h4 className="text-sm font-medium text-gray-700 mb-3">
               Strategy Extensions
             </h4>
-            <div className="flex flex-wrap gap-2">
-              {(() => {
-                const config = getExtensionConfig(orderData.extension);
-                return config ? (
-                  <span
-                    key={orderData.extension}
-                    className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm"
-                  >
-                    {config.name}
-                  </span>
-                ) : null;
-              })()}
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              This order uses advanced extensions for enhanced functionality.
+            <p className="text-sm text-gray-500 mt-2">
+              {unpackExtensions(orderData.extension)
+                .map((ext) => ext.meta.name || 'Unknown Extension')
+                .join(', ')}
             </p>
           </div>
         )}

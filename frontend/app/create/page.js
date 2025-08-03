@@ -22,6 +22,7 @@ import {
   TokenAmountField,
 } from '../../components/SchemaFields';
 import { AssetAddressInput } from '../../components/AssetAddressInput';
+import Switch from '../../components/Switch';
 
 function CreateOrderForm() {
   const router = useRouter();
@@ -36,16 +37,18 @@ function CreateOrderForm() {
   // State for order parameters
   const [orderParams, setOrderParams] = useState({
     maker: '',
-    makerAsset: '0x50c5725949a6f0c72e6c4a641f24049a917db0cb',
-    makerAmount: '0.05',
-    takerAsset: '0x4200000000000000000000000000000000000006',
-    takerAmount: '0.00001',
+    makerAsset: '',
+    makerAmount: '',
+    takerAsset: '',
+    takerAmount: '',
     receiver: '',
     expiry: '',
     nonce: '',
     // Allow partial & multiple fills to disable bit invalidator
     allowPartialFills: true,
     allowMultipleFills: true,
+    // Maker permit for gasless approval
+    makerPermit: false,
   });
 
   // State for extension parameters
@@ -181,7 +184,8 @@ function CreateOrderForm() {
         orderParams.makerAmount,
         orderParams.takerAsset,
         orderParams.takerAmount,
-        orderParams.receiver || undefined // Use undefined if no custom receiver
+        orderParams.receiver || undefined, // Use undefined if no custom receiver
+        orderParams.makerPermit
       );
       // Configure maker traits
       const traits = builder.getMakerTraits();
@@ -244,17 +248,17 @@ function CreateOrderForm() {
     }
     return (
       <>
-        <h3 className="text-lg font-semibold text-gray-900 pb-2">
-          Extension Parameters
-        </h3>
         {selectedExtensions.map((extensionId) => {
           const config = getExtensionConfig(extensionId);
           if (!config) return null;
           return (
-            <div key={extensionId} className="p-4">
-              <h4 className="text-md font-medium text-gray-800 mb-3">
+            <div
+              key={extensionId}
+              className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+            >
+              <h3 className="text-lg font-semibold text-gray-900 mb-6">
                 {config.name}
-              </h4>
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {flatExtensionConfigParams(config).map((param) => {
                   const FieldComponent = getFieldComponent(param.type);
@@ -457,48 +461,38 @@ function CreateOrderForm() {
 
               {/* Order Traits */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Order Options
-                </label>
-                <div className="space-y-2">
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={orderParams.allowPartialFills}
-                      onChange={(e) =>
-                        handleParamChange('allowPartialFills', e.target.checked)
-                      }
-                      className="mr-2 h-4 w-4 text-primary-orange focus:ring-primary-orange border-gray-300 rounded"
-                    />
-                    <span className="text-sm text-gray-700">
-                      Allow partial fills
-                    </span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={orderParams.allowMultipleFills}
-                      onChange={(e) =>
-                        handleParamChange(
-                          'allowMultipleFills',
-                          e.target.checked
-                        )
-                      }
-                      className="mr-2 h-4 w-4 text-primary-orange focus:ring-primary-orange border-gray-300 rounded"
-                    />
-                    <span className="text-sm text-gray-700">
-                      Allow multiple fills
-                    </span>
-                  </label>
+                <div className="space-y-4">
+                  <Switch
+                    checked={orderParams.allowPartialFills}
+                    onChange={(checked) =>
+                      handleParamChange('allowPartialFills', checked)
+                    }
+                    label="Allow partial fills"
+                    description="Allow the order to be filled in multiple smaller transactions"
+                  />
+                  <Switch
+                    checked={orderParams.allowMultipleFills}
+                    onChange={(checked) =>
+                      handleParamChange('allowMultipleFills', checked)
+                    }
+                    label="Allow multiple fills"
+                    description="Allow the order to be filled by multiple different takers"
+                  />
+                  <Switch
+                    checked={orderParams.makerPermit}
+                    onChange={(checked) =>
+                      handleParamChange('makerPermit', checked)
+                    }
+                    label="Use maker permit"
+                    description="Use EIP-2612 permit for gasless token approval instead of separate transaction"
+                  />
                 </div>
               </div>
             </div>
           </div>
 
           {/* Extension Parameters */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            {renderExtensionFields()}
-          </div>
+          <div>{renderExtensionFields()}</div>
         </div>
 
         {/* Error Display */}

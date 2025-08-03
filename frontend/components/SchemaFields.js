@@ -136,9 +136,7 @@ export const TokenAmountField = ({
         required={required}
       />
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-      <p className="text-xs text-gray-400 mt-1">
-        Enter numeric amount (stored as entered)
-      </p>
+      <p className="text-xs text-gray-400 mt-1">Enter numeric amount</p>
     </div>
   );
 };

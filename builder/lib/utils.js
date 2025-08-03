@@ -243,13 +243,11 @@ export function lookupExtensionByAddress(address) {
 }
 
 /**
- * Call onFill callback for all extensions present in the order
- * @param {import('ethers').Signer} signer - Ethers signer instance
- * @param {import('@1inch/limit-order-sdk').LimitOrderV4Struct} order - The order object
- * @param {BigInt} amount - Amount being filled
- * @param {Extension} extension - Extension data
+ * Extract and map extension addresses to their corresponding extension objects
+ * @param {Extension} extension - Extension data containing various hook data
+ * @returns {Object[]} Array of unique extension objects found in extension data
  */
-export async function callExtensionsCallback(signer, order, amount, extension) {
+export function unpackExtensions(extension) {
   // Helper to extract address from hex data (first 42 chars, 0x + 40 hex)
   function extractAddress(data) {
     if (typeof data !== 'string' || !data.startsWith('0x') || data.length < 42)
@@ -266,14 +264,25 @@ export async function callExtensionsCallback(signer, order, amount, extension) {
   const addresses = fields
     .map(extractAddress)
     .filter((addr) => addr && /^0x[0-9a-f]{40}$/.test(addr));
-  // Deduplicate addresses
-  const uniqueAddresses = [...new Set(addresses)];
-  for (const address of uniqueAddresses) {
-    const ext = lookupExtensionByAddress(address);
-    if (ext) {
-      const { onFill } = ext.callbacks;
-      await onFill?.(signer, order, amount);
-    }
+  // Deduplicate addresses and map to extensions
+  const unique = [...new Set(addresses)];
+  return unique
+    .map((address) => lookupExtensionByAddress(address))
+    .filter(Boolean);
+}
+
+/**
+ * Call onFill callback for all extensions present in the order
+ * @param {import('ethers').Signer} signer - Ethers signer instance
+ * @param {import('@1inch/limit-order-sdk').LimitOrderV4Struct} order - The order object
+ * @param {BigInt} amount - Amount being filled
+ * @param {Extension} extension - Extension data
+ */
+export async function callExtensionsCallback(signer, order, amount, extension) {
+  const extensions = unpackExtensions(extension);
+  for (const ext of extensions) {
+    const { onFill } = ext.callbacks;
+    await onFill?.(signer, order, amount);
   }
 }
 

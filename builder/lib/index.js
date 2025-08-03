@@ -6,6 +6,7 @@ import rangeAmountCalculator from './extensions/RangeAmountCalculator.js';
 import uniswapCalculator from './extensions/UniswapCalculator.js';
 
 export { getLimitOrderContract } from '@1inch/limit-order-sdk';
+export { default as createERC20Contract } from './contracts/ERC20.js';
 export * as Type from './extensions/utils/types.js';
 export { OrderBuilder, HookCollisionError } from './OrderBuilder.js';
 export * from './utils.js';
