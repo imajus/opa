@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, Fragment } from 'react';
-import { Combobox, Transition } from '@headlessui/react';
+import { useState, useMemo } from 'react';
+import AsyncSelect from 'react-select/async';
 import { useAccount } from 'wagmi';
 import { Token } from '../lib/1inch';
 
@@ -17,69 +17,7 @@ export const AssetAddressInput = ({
   hint = null,
 }) => {
   const { chain } = useAccount();
-  const [query, setQuery] = useState('');
-  const [tokens, setTokens] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [searchError, setSearchError] = useState(null);
-
-  // Search for tokens when query changes
-  useEffect(() => {
-    const searchForTokens = async () => {
-      if (!chain?.id) {
-        setTokens([]);
-        return;
-      }
-      // If query looks like an address, don't search
-      if (/^0x[a-fA-F0-9]{40}$/.test(query)) {
-        setTokens([]);
-        return;
-      }
-      setIsLoading(true);
-      setTokens([]);
-      setSearchError(null);
-      try {
-        let results;
-        if (!query.trim() || query.length < 2) {
-          // Show popular tokens when no query
-          results = await Token.searchTokens(chain.id, {
-            query: 'eth', // Get ETH and ETH-related tokens as defaults
-            limit: 8,
-            onlyPositiveRating: true,
-          });
-        } else {
-          // Search with user query
-          results = await Token.searchTokens(chain.id, {
-            query: query.trim(),
-            limit: 20,
-            onlyPositiveRating: true,
-          });
-        }
-        setTokens(Array.isArray(results) ? results : []);
-      } catch (err) {
-        console.error('Token search error:', err);
-        setSearchError('Failed to search tokens');
-        setTokens([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    const timeoutId = setTimeout(searchForTokens, 1000); // Debounce
-    return () => clearTimeout(timeoutId);
-  }, [query, chain?.id]);
-
-  // Get display value for selected token
-  const displayValue = useMemo(() => {
-    if (!value) return '';
-    // Check if value matches a token from our search results
-    const matchedToken = tokens.find(
-      (token) => token.address.toLowerCase() === value.toLowerCase()
-    );
-    if (matchedToken) {
-      return `${matchedToken.symbol} - ${matchedToken.name}`;
-    }
-    // Return the raw address for manual entries
-    return value;
-  }, [value, tokens]);
+  const [cachedTokens, setCachedTokens] = useState(new Map());
 
   // Validate address format
   const validateAddress = (addr) => {
@@ -90,18 +28,112 @@ export const AssetAddressInput = ({
     return '';
   };
 
-  const handleSelection = (selectedItem) => {
-    if (selectedItem?.address) {
-      onChange(selectedItem.address);
-    } else if (selectedItem) {
-      // Handle manual address input
-      onChange(selectedItem);
+  // Load options function for AsyncSelect
+  const loadOptions = async (inputValue) => {
+    if (!chain?.id) {
+      return [];
+    }
+
+    const query = inputValue.trim();
+
+    // If input looks like an address, create an option for it
+    if (/^0x[a-fA-F0-9]+$/.test(query)) {
+      const isValidAddress = /^0x[a-fA-F0-9]{40}$/.test(query);
+      return [
+        {
+          value: query,
+          label: isValidAddress
+            ? `Address: ${query}`
+            : 'Invalid address format',
+          address: query,
+          isAddress: true,
+          isValid: isValidAddress,
+        },
+      ];
+    }
+
+    // Check cache first
+    const cacheKey = `${chain.id}-${query}`;
+    if (cachedTokens.has(cacheKey)) {
+      return cachedTokens.get(cacheKey);
+    }
+
+    try {
+      let results;
+      if (!query || query.length < 2) {
+        // Show popular tokens when no query
+        results = await Token.searchTokens(chain.id, {
+          query: 'eth',
+          limit: 8,
+          onlyPositiveRating: true,
+        });
+      } else {
+        // Search with user query
+        results = await Token.searchTokens(chain.id, {
+          query: query,
+          limit: 20,
+          onlyPositiveRating: true,
+        });
+      }
+
+      const options = (Array.isArray(results) ? results : []).map((token) => ({
+        value: token.address,
+        label: token.symbol,
+        token: token,
+        address: token.address,
+        symbol: token.symbol,
+        name: token.name,
+        logoURI: token.logoURI,
+        rating: token.rating,
+      }));
+
+      // Cache the results
+      setCachedTokens((prev) => new Map(prev).set(cacheKey, options));
+
+      return options;
+    } catch (err) {
+      console.error('Token search error:', err);
+      return [];
     }
   };
 
-  const handleInputChange = (inputValue) => {
-    setQuery(inputValue);
+  // Get the current selected option for display
+  const selectedOption = useMemo(() => {
+    if (!value) return null;
 
+    // First check if it's a cached token
+    for (const options of cachedTokens.values()) {
+      const found = options.find(
+        (opt) => opt.value.toLowerCase() === value.toLowerCase()
+      );
+      if (found) return found;
+    }
+
+    // If it's an address, create an option for it
+    if (/^0x[a-fA-F0-9]{40}$/.test(value)) {
+      return {
+        value: value,
+        label: `Address: ${value}`,
+        address: value,
+        isAddress: true,
+        isValid: true,
+      };
+    }
+
+    return null;
+  }, [value, cachedTokens]);
+
+  // Handle selection
+  const handleChange = (selectedOption) => {
+    if (selectedOption) {
+      onChange(selectedOption.value);
+    } else {
+      onChange('');
+    }
+  };
+
+  // Handle manual input (for addresses)
+  const handleInputChange = (inputValue) => {
     // If user is typing an address directly, update the value
     if (/^0x[a-fA-F0-9]*$/.test(inputValue)) {
       onChange(inputValue);
@@ -111,6 +143,106 @@ export const AssetAddressInput = ({
   const addressError = value ? validateAddress(value) : null;
   const finalError = error || addressError;
 
+  // Custom option component with token details
+  const CustomOption = ({
+    innerRef,
+    innerProps,
+    data,
+    isSelected,
+    isFocused,
+  }) => (
+    <div
+      ref={innerRef}
+      {...innerProps}
+      className={`relative cursor-pointer select-none py-2 pl-3 pr-4 ${
+        isFocused ? 'bg-primary-orange text-white' : 'text-gray-900'
+      } ${isSelected ? 'bg-blue-50' : ''}`}
+    >
+      <div className="flex items-center">
+        {data.logoURI && !data.isAddress && (
+          <img
+            src={data.logoURI}
+            alt={`${data.symbol} logo`}
+            className="h-6 w-6 rounded-full mr-3 flex-shrink-0"
+            onError={(e) => {
+              e.target.style.display = 'none';
+            }}
+          />
+        )}
+        <div className="flex-1 min-w-0">
+          {data.isAddress ? (
+            <div>
+              <div className="font-medium truncate text-sm">
+                {data.isValid ? 'Custom Address' : 'Invalid Address'}
+              </div>
+              <div className="text-xs opacity-75 font-mono truncate">
+                {data.address}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="font-medium truncate">{data.symbol}</span>
+                {data.rating && (
+                  <span className="text-xs opacity-75 ml-2">
+                    ★ {data.rating}
+                  </span>
+                )}
+              </div>
+              <div className="text-sm opacity-75 truncate">{data.name}</div>
+              <div className="text-xs opacity-50 font-mono">
+                {data.address.slice(0, 8)}...{data.address.slice(-6)}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Custom styles for React Select
+  const customStyles = {
+    control: (provided, state) => ({
+      ...provided,
+      minHeight: '40px',
+      border: finalError
+        ? '1px solid #ef4444'
+        : state.isFocused
+          ? '2px solid #f97316'
+          : '1px solid #d1d5db',
+      borderRadius: '0.375rem',
+      boxShadow: state.isFocused ? '0 0 0 1px #f97316' : 'none',
+      '&:hover': {
+        border: finalError ? '1px solid #ef4444' : '1px solid #9ca3af',
+      },
+    }),
+    placeholder: (provided) => ({
+      ...provided,
+      color: '#9ca3af',
+    }),
+    menu: (provided) => ({
+      ...provided,
+      zIndex: 10,
+      maxHeight: '240px',
+    }),
+    menuList: (provided) => ({
+      ...provided,
+      maxHeight: '240px',
+    }),
+    loadingMessage: (provided) => ({
+      ...provided,
+      color: '#6b7280',
+      fontSize: '0.875rem',
+      padding: '8px 16px',
+    }),
+    noOptionsMessage: (provided) => ({
+      ...provided,
+      color: '#6b7280',
+      fontSize: '0.875rem',
+      padding: '8px 16px',
+    }),
+  };
+
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -118,93 +250,34 @@ export const AssetAddressInput = ({
         {required && <span className="text-red-500 ml-1">*</span>}
       </label>
 
-      <Combobox value={value} onChange={handleSelection}>
-        <div className="relative">
-          <Combobox.Input
-            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-orange focus:border-transparent text-gray-900 placeholder-gray-500 ${
-              finalError ? 'border-red-500' : 'border-gray-300'
-            }`}
-            displayValue={() => displayValue}
-            onChange={(event) => handleInputChange(event.target.value)}
-            placeholder={placeholder}
-            required={required}
-            autoComplete="off"
-          />
-
-          <Transition
-            as={Fragment}
-            leave="transition ease-in duration-100"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-              {isLoading && (
-                <div className="px-4 py-2 text-gray-500 text-sm">
-                  Searching tokens...
-                </div>
-              )}
-
-              {searchError && (
-                <div className="px-4 py-2 text-red-500 text-sm">
-                  {searchError}
-                </div>
-              )}
-
-              {!isLoading &&
-                tokens.length === 0 &&
-                query.length >= 2 &&
-                !searchError && (
-                  <div className="px-4 py-2 text-gray-500 text-sm">
-                    No tokens found. You can enter a custom address.
-                  </div>
-                )}
-
-              {tokens.map((token) => (
-                <Combobox.Option
-                  key={token.address}
-                  className={({ active }) =>
-                    `relative cursor-pointer select-none py-2 pl-3 pr-4 ${
-                      active ? 'bg-primary-orange text-white' : 'text-gray-900'
-                    }`
-                  }
-                  value={token}
-                >
-                  <div className="flex items-center">
-                    {token.logoURI && (
-                      <img
-                        src={token.logoURI}
-                        alt={`${token.symbol} logo`}
-                        className="h-6 w-6 rounded-full mr-3 flex-shrink-0"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium truncate">
-                          {token.symbol}
-                        </span>
-                        {token.rating && (
-                          <span className="text-xs opacity-75 ml-2">
-                            ★ {token.rating}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-sm opacity-75 truncate">
-                        {token.name}
-                      </div>
-                      <div className="text-xs opacity-50 font-mono">
-                        {token.address.slice(0, 8)}...{token.address.slice(-6)}
-                      </div>
-                    </div>
-                  </div>
-                </Combobox.Option>
-              ))}
-            </Combobox.Options>
-          </Transition>
-        </div>
-      </Combobox>
+      <AsyncSelect
+        value={selectedOption}
+        onChange={handleChange}
+        onInputChange={handleInputChange}
+        loadOptions={loadOptions}
+        placeholder={placeholder}
+        isClearable
+        isSearchable
+        cacheOptions
+        defaultOptions
+        styles={customStyles}
+        components={{ Option: CustomOption }}
+        loadingMessage={() => 'Searching tokens...'}
+        noOptionsMessage={({ inputValue }) =>
+          !inputValue
+            ? 'Start typing to search tokens or enter an address'
+            : inputValue.length < 2
+              ? 'Type at least 2 characters'
+              : 'No tokens found. You can enter a custom address.'
+        }
+        isDisabled={!chain}
+        getOptionLabel={(option) =>
+          option.isAddress
+            ? `Address: ${option.address.slice(0, 8)}...${option.address.slice(-6)}`
+            : `${option.symbol} - ${option.name}`
+        }
+        getOptionValue={(option) => option.value}
+      />
 
       {finalError && <p className="text-red-600 text-sm mt-1">{finalError}</p>}
 
