@@ -25,16 +25,16 @@ export async function getWhitelistPrices(options = {}) {
 
 /**
  * Get prices for requested tokens via POST request
+ * @param {number} chainId - Chain ID (e.g. 1 for Ethereum)
  * @param {TokenAddress[]} tokens - Array of token addresses
- * @param {PriceApiOptions} [options] - Options for the request
+ * @param {string} currency - Currency code (e.g. 'USD')
  * @returns {Promise<PricesMap>} Prices for requested tokens (address -> price)
  */
-export async function getPrices(tokens, options = {}) {
-  const { currency } = options;
+export async function getPrices(chainId, tokens, currency = 'USD') {
   if (!Array.isArray(tokens) || tokens.length === 0) {
     throw new Error('tokens must be a non-empty array');
   }
-  return apiCall('/price/v1.1/1', {
+  return apiCall(`/price/v1.1/${chainId}`, {
     method: 'POST',
     body: { tokens, currency },
   });
@@ -42,19 +42,23 @@ export async function getPrices(tokens, options = {}) {
 
 /**
  * Get prices for specific token addresses via GET request
+ * @param {number} chainId - Chain ID (e.g. 1 for Ethereum)
  * @param {TokenAddress | TokenAddress[]} addresses - Single address or array of token addresses
- * @param {PriceApiOptions} [options] - Options for the request
+ * @param {string} currency - Currency code (e.g. 'USD')
  * @returns {Promise<PricesMap>} Prices for requested tokens (address -> price)
  */
-export async function getPricesByAddresses(addresses, options = {}) {
-  const { currency } = options;
+export async function getPricesByAddresses(
+  chainId,
+  addresses,
+  currency = 'USD'
+) {
   if (!addresses) {
     throw new Error('addresses parameter is required');
   }
   // Convert single address to array for consistent handling
   const addressArray = Array.isArray(addresses) ? addresses : [addresses];
   const addressesParam = addressArray.join(',');
-  return apiCall(`/price/v1.1/1/${addressesParam}`, {
+  return apiCall(`/price/v1.1/${chainId}/${addressesParam}`, {
     params: { currency },
   });
 }
@@ -65,10 +69,11 @@ export async function getPricesByAddresses(addresses, options = {}) {
 
 /**
  * Get list of supported currencies
+ * @param {number} chainId - Chain ID (e.g. 1 for Ethereum)
  * @returns {Promise<CurrenciesResponseDto>} List of supported currency codes
  */
-export async function getSupportedCurrencies() {
-  return apiCall('/price/v1.1/1/currencies');
+export async function getSupportedCurrencies(chainId) {
+  return apiCall(`/price/v1.1/${chainId}/currencies`);
 }
 
 // ============================================================================
@@ -77,16 +82,21 @@ export async function getSupportedCurrencies() {
 
 /**
  * Get price for a single token with error handling
+ * @param {number} chainId - Chain ID (e.g. 1 for Ethereum)
  * @param {TokenAddress} tokenAddress - Token address
- * @param {PriceApiOptions} [options] - Options for the request
+ * @param {string} currency - Currency code (e.g. 'USD')
  * @returns {Promise<string | null>} Token price or null if not found
  */
-export async function getSingleTokenPrice(tokenAddress, options = {}) {
+export async function getSingleTokenPrice(
+  chainId,
+  tokenAddress,
+  currency = 'USD'
+) {
   if (!tokenAddress) {
     throw new Error('tokenAddress parameter is required');
   }
   try {
-    const prices = await getPricesByAddresses(tokenAddress, options);
+    const prices = await getPricesByAddresses(chainId, tokenAddress, currency);
     return prices[tokenAddress] || null;
   } catch (error) {
     console.warn(`Failed to get price for token ${tokenAddress}:`, error);
@@ -96,24 +106,29 @@ export async function getSingleTokenPrice(tokenAddress, options = {}) {
 
 /**
  * Get prices with automatic chunking for large token lists
+ * @param {number} chainId - Chain ID (e.g. 1 for Ethereum)
  * @param {TokenAddress[]} tokens - Array of token addresses
- * @param {PriceApiOptions & { chunkSize?: number }} [options] - Options including chunk size
+ * @param {number} chunkSize - Chunk size for batching
  * @returns {Promise<PricesMap>} Combined prices map
  */
-export async function getBatchPrices(tokens, options = {}) {
-  const { chunkSize = 100, ...priceOptions } = options;
+export async function getBatchPrices(
+  chainId,
+  tokens,
+  currency = 'USD',
+  chunkSize = 100
+) {
   if (!Array.isArray(tokens) || tokens.length === 0) {
     throw new Error('tokens must be a non-empty array');
   }
   if (tokens.length <= chunkSize) {
-    return getPrices(tokens, priceOptions);
+    return getPrices(chainId, tokens, currency);
   }
   const chunks = [];
   for (let i = 0; i < tokens.length; i += chunkSize) {
     chunks.push(tokens.slice(i, i + chunkSize));
   }
   const results = await Promise.all(
-    chunks.map((chunk) => getPrices(chunk, priceOptions))
+    chunks.map((chunk) => getPrices(chainId, chunk, currency))
   );
   return results.reduce((combined, result) => ({ ...combined, ...result }), {});
 }
@@ -121,10 +136,11 @@ export async function getBatchPrices(tokens, options = {}) {
 /**
  * Get prices in multiple currencies for comparison
  * @param {TokenAddress[]} tokens - Array of token addresses
+ * @param {number} chainId - Chain ID (e.g. 1 for Ethereum)
  * @param {SupportedCurrency[]} currencies - Array of currencies to get prices in
  * @returns {Promise<Record<SupportedCurrency, PricesMap>>} Prices by currency
  */
-export async function getMultiCurrencyPrices(tokens, currencies) {
+export async function getMultiCurrencyPrices(chainId, tokens, currencies) {
   if (!Array.isArray(tokens) || tokens.length === 0) {
     throw new Error('tokens must be a non-empty array');
   }
@@ -132,7 +148,10 @@ export async function getMultiCurrencyPrices(tokens, currencies) {
     throw new Error('currencies must be a non-empty array');
   }
   const pricePromises = currencies.map((currency) =>
-    getPrices(tokens, { currency }).then((prices) => ({ currency, prices }))
+    getPrices(chainId, tokens, currency).then((prices) => ({
+      currency,
+      prices,
+    }))
   );
   const results = await Promise.all(pricePromises);
   return results.reduce((combined, { currency, prices }) => {
@@ -143,17 +162,22 @@ export async function getMultiCurrencyPrices(tokens, currencies) {
 
 /**
  * Get price with fallback to whitelisted prices if custom token fails
+ * @param {number} chainId - Chain ID (e.g. 1 for Ethereum)
  * @param {TokenAddress} tokenAddress - Token address
- * @param {PriceApiOptions} [options] - Options for the request
+ * @param {string} currency - Currency code (e.g. 'USD')
  * @returns {Promise<string | null>} Token price or null if not found
  */
-export async function getPriceWithFallback(tokenAddress, options = {}) {
+export async function getPriceWithFallback(
+  chainId,
+  tokenAddress,
+  currency = 'USD'
+) {
   if (!tokenAddress) {
     throw new Error('tokenAddress parameter is required');
   }
   try {
     // Try to get price via specific address endpoint
-    const prices = await getPricesByAddresses(tokenAddress, options);
+    const prices = await getPricesByAddresses(chainId, tokenAddress, currency);
     if (prices[tokenAddress]) {
       return prices[tokenAddress];
     }
@@ -164,7 +188,7 @@ export async function getPriceWithFallback(tokenAddress, options = {}) {
   }
   try {
     // Fallback to whitelist prices
-    const whitelistPrices = await getWhitelistPrices(options);
+    const whitelistPrices = await getWhitelistPrices(chainId, currency);
     return whitelistPrices[tokenAddress] || null;
   } catch (error) {
     console.warn(`Whitelist price lookup failed for ${tokenAddress}:`, error);
@@ -174,12 +198,14 @@ export async function getPriceWithFallback(tokenAddress, options = {}) {
 
 /**
  * Calculate price differences between two currencies
+ * @param {number} chainId - Chain ID (e.g. 1 for Ethereum)
  * @param {TokenAddress[]} tokens - Array of token addresses
- * @param {SupportedCurrency} baseCurrency - Base currency for comparison
- * @param {SupportedCurrency} targetCurrency - Target currency for comparison
+ * @param {string} baseCurrency - Base currency for comparison
+ * @param {string} targetCurrency - Target currency for comparison
  * @returns {Promise<Record<string, { base: string, target: string, ratio: number }>>} Price comparison data
  */
 export async function comparePricesAcrossCurrencies(
+  chainId,
   tokens,
   baseCurrency,
   targetCurrency
@@ -188,8 +214,8 @@ export async function comparePricesAcrossCurrencies(
     throw new Error('tokens must be a non-empty array');
   }
   const [basePrices, targetPrices] = await Promise.all([
-    getPrices(tokens, { currency: baseCurrency }),
-    getPrices(tokens, { currency: targetCurrency }),
+    getPrices(chainId, tokens, baseCurrency),
+    getPrices(chainId, tokens, targetCurrency),
   ]);
   const comparison = {};
   for (const token of tokens) {

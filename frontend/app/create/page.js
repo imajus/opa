@@ -24,6 +24,7 @@ import {
 import { AssetAddressInput } from '../../components/AssetAddressInput';
 import AddressInput from '../../components/AddressInput';
 import Switch from '../../components/Switch';
+import { Spot } from '../../lib/1inch';
 
 function CreateOrderForm() {
   const router = useRouter();
@@ -69,6 +70,10 @@ function CreateOrderForm() {
   const [isSharing, setIsSharing] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
   const [copied, setCopied] = useState(false);
+
+  // State for price suggestion
+  const [suggestedTakerAmount, setSuggestedTakerAmount] = useState(null);
+  const [isPriceLoading, setIsPriceLoading] = useState(false);
 
   // Initialize from URL parameters
   useEffect(() => {
@@ -120,6 +125,50 @@ function CreateOrderForm() {
     }
   }, [orderParams.expiry]);
 
+  // Calculate suggested taker amount based on USD prices
+  useEffect(() => {
+    const calculateSuggestedAmount = async () => {
+      const { makerAsset, takerAsset, makerAmount } = orderParams;
+
+      // Only calculate if all required fields are filled
+      if (!makerAsset || !takerAsset || !makerAmount || !chain?.id) {
+        setSuggestedTakerAmount(null);
+        return;
+      }
+
+      setIsPriceLoading(true);
+      try {
+        // Get USD prices for both tokens
+        const prices = await Spot.getPrices(chain.id, [makerAsset, takerAsset]);
+
+        const makerPriceUSD = prices[makerAsset];
+        const takerPriceUSD = prices[takerAsset];
+
+        if (makerPriceUSD && takerPriceUSD) {
+          // Calculate: makerAmount * makerPriceUSD / takerPriceUSD
+          const makerValueUSD =
+            parseFloat(makerAmount) * parseFloat(makerPriceUSD);
+          const suggestedAmount = makerValueUSD / parseFloat(takerPriceUSD);
+          setSuggestedTakerAmount(suggestedAmount.toFixed(6));
+        } else {
+          setSuggestedTakerAmount(null);
+        }
+      } catch (error) {
+        console.error('Failed to get price suggestions:', error);
+        setSuggestedTakerAmount(null);
+      } finally {
+        setIsPriceLoading(false);
+      }
+    };
+
+    calculateSuggestedAmount();
+  }, [
+    orderParams.makerAsset,
+    orderParams.takerAsset,
+    orderParams.makerAmount,
+    chain?.id,
+  ]);
+
   const handleParamChange = (field, value) => {
     setOrderParams((prev) => ({
       ...prev,
@@ -144,6 +193,12 @@ function CreateOrderForm() {
         [param]: value,
       },
     }));
+  };
+
+  const handleSuggestedAmountClick = () => {
+    if (suggestedTakerAmount) {
+      handleParamChange('takerAmount', suggestedTakerAmount);
+    }
   };
 
   const validateForm = () => {
@@ -514,6 +569,36 @@ function CreateOrderForm() {
                       {validationErrors.takerAmount}
                     </p>
                   )}
+
+                  {/* Price Suggestion Hint */}
+                  {orderParams.makerAsset &&
+                    orderParams.takerAsset &&
+                    orderParams.makerAmount && (
+                      <div className="mt-2">
+                        {isPriceLoading ? (
+                          <p className="text-xs text-gray-500">
+                            <span className="inline-block animate-spin rounded-full h-3 w-3 border-b border-gray-400 mr-1"></span>
+                            Calculating suggested amount...
+                          </p>
+                        ) : suggestedTakerAmount ? (
+                          <p className="text-xs text-gray-600">
+                            Market rate suggests:{' '}
+                            <button
+                              type="button"
+                              onClick={handleSuggestedAmountClick}
+                              className="text-primary-orange hover:text-orange-600 underline font-medium cursor-pointer"
+                            >
+                              {suggestedTakerAmount}
+                            </button>{' '}
+                            (click to use)
+                          </p>
+                        ) : (
+                          <p className="text-xs text-gray-500">
+                            Unable to get price suggestion
+                          </p>
+                        )}
+                      </div>
+                    )}
                 </div>
               </div>
 

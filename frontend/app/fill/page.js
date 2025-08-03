@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { useAccount } from 'wagmi';
 import { useEthersSigner } from '../../lib/utils/ethers';
 import { decodeOrder } from '../../lib/utils/encoding';
-import { getExtensionConfig } from '../../lib/utils/extensions';
 import {
   calculateMakingAmount,
   fillOrder,
@@ -15,7 +14,7 @@ import {
   unpackExtensions,
 } from 'opa-builder';
 import { parseUnits, formatUnits, formatEther, ZeroAddress } from 'ethers';
-import { Token, Balance } from '../../lib/1inch';
+import { Token, Balance, Spot } from '../../lib/1inch';
 import TokenSymbol, {
   getTokenDataForSymbol,
 } from '../../components/TokenSymbol';
@@ -50,6 +49,10 @@ function FillOrderPage() {
 
   // State for calculated maker amount
   const [calculatedMakerAmount, setCalculatedMakerAmount] = useState(null);
+
+  // State for USD prices
+  const [usdPrices, setUsdPrices] = useState({});
+  const [isLoadingUsdPrices, setIsLoadingUsdPrices] = useState(false);
 
   // Initialize from URL parameters
   useEffect(() => {
@@ -166,6 +169,30 @@ function FillOrderPage() {
     loadTokensData();
   }, [chain?.id, orderData, address, signer]);
 
+  // Load USD prices for both maker and taker assets
+  useEffect(() => {
+    const loadUsdPrices = async () => {
+      if (!chain?.id || !orderData) return;
+
+      setIsLoadingUsdPrices(true);
+      try {
+        const tokenAddresses = [
+          orderData.order.makerAsset,
+          orderData.order.takerAsset,
+        ];
+        const prices = await Spot.getPrices(chain.id, tokenAddresses);
+        setUsdPrices(prices);
+      } catch (error) {
+        console.error('Failed to load USD prices:', error);
+        setUsdPrices({});
+      } finally {
+        setIsLoadingUsdPrices(false);
+      }
+    };
+
+    loadUsdPrices();
+  }, [chain?.id, orderData]);
+
   // Helper functions to fetch token data via RPC
   const fetchTokenDataViaRPC = async (tokenAddress) => {
     if (!signer || !tokenAddress) return null;
@@ -250,6 +277,46 @@ function FillOrderPage() {
     if (!tokensData || !tokenAddress) return '???';
     const token = tokensData[tokenAddress.toLowerCase()];
     return token?.symbol || '???';
+  };
+
+  // Calculate USD value for token amount
+  const calculateUsdValue = (amount, tokenAddress) => {
+    if (!usdPrices || !amount || !tokenAddress) return null;
+
+    const price = usdPrices[tokenAddress];
+    if (!price) return null;
+
+    try {
+      const tokenAmount = parseFloat(formatTokenAmount(amount, tokenAddress));
+      const usdValue = tokenAmount * parseFloat(price);
+
+      // Format USD value with appropriate precision
+      if (usdValue >= 1000) {
+        return usdValue.toLocaleString('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        });
+      } else if (usdValue >= 1) {
+        return usdValue.toLocaleString('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+      } else {
+        return usdValue.toLocaleString('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 6,
+        });
+      }
+    } catch (error) {
+      console.error('Error calculating USD value:', error);
+      return null;
+    }
   };
 
   // Parse maker traits to get order flags
@@ -593,8 +660,24 @@ function FillOrderPage() {
                   )}
                   textColor="text-gray-500"
                   className="ml-2"
+                  size="lg"
                 />
               </div>
+              {/* USD Value */}
+              {!isLoadingUsdPrices && (
+                <div className="text-sm text-gray-500">
+                  {calculateUsdValue(
+                    getMakerAmount(),
+                    orderData.order.makerAsset
+                  ) || <span className="text-xs">Price unavailable</span>}
+                </div>
+              )}
+              {isLoadingUsdPrices && (
+                <div className="text-sm text-gray-500">
+                  <span className="inline-block animate-spin rounded-full h-3 w-3 border-b border-gray-400 mr-1"></span>
+                  Loading USD value...
+                </div>
+              )}
               <Address
                 address={orderData.order.makerAsset}
                 size="xs"
@@ -626,8 +709,24 @@ function FillOrderPage() {
                   )}
                   textColor="text-gray-500"
                   className="ml-2"
+                  size="lg"
                 />
               </div>
+              {/* USD Value */}
+              {!isLoadingUsdPrices && (
+                <div className="text-sm text-gray-500">
+                  {calculateUsdValue(
+                    getTakerAmount(),
+                    orderData.order.takerAsset
+                  ) || <span className="text-xs">Price unavailable</span>}
+                </div>
+              )}
+              {isLoadingUsdPrices && (
+                <div className="text-sm text-gray-500">
+                  <span className="inline-block animate-spin rounded-full h-3 w-3 border-b border-gray-400 mr-1"></span>
+                  Loading USD value...
+                </div>
+              )}
               <Address
                 address={orderData.order.takerAsset}
                 size="xs"
