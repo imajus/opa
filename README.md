@@ -51,6 +51,7 @@ Variety of 1Inch API endpoints has been integrated:
 - [Token API](./frontend/lib/1inch/Token.js) - dropdown list of suggested tokens on Create Order page
 - [Balances API](./frontend/lib/1inch/Balance.js) - token holdings verification on Fill Order page
 - [Domains API](./frontend/lib/1inch/Domains.js) - converting between ENS domain ⇄ address for better UX
+- [Spot Price API](./frontend/lib/1inch/Spot.js) - suggesting taking amont on Create Order page and displaying token prices on Fill Order page
 
 ### Live Demo
 
